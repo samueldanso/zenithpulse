@@ -95,10 +95,10 @@ async function runCycle(db: Db, bitgetClient: BitgetClient, config: AppConfig): 
 
 		const playbooks = db.select().from(schema.playbooks).all();
 		for (const pb of playbooks) {
-			await db
-				.update(schema.playbooks)
+			db.update(schema.playbooks)
 				.set({ lastObservedAt: new Date().toISOString() })
-				.where(eq(schema.playbooks.id, pb.id));
+				.where(eq(schema.playbooks.id, pb.id))
+				.run();
 
 			const contract = pb.contractJson ? (JSON.parse(pb.contractJson) as BehavioralContract) : null;
 			if (!contract) continue;

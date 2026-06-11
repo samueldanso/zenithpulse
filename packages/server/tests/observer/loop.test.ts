@@ -28,7 +28,8 @@ const mockWhere = vi.fn(() => ({ get: vi.fn(() => null) }));
 const mockSelectFrom = vi.fn(() => ({ where: mockWhere }));
 const mockSelectForLoad = vi.fn(() => ({ from: mockSelectFrom }));
 
-const mockUpdateWhere = vi.fn();
+const mockUpdateRun = vi.fn();
+const mockUpdateWhere = vi.fn(() => ({ run: mockUpdateRun }));
 const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
 const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
 
