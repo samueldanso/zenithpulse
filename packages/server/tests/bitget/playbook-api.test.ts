@@ -55,20 +55,25 @@ describe("PlaybookClient", () => {
 		const client = createPlaybookClient(configWithKey);
 
 		it("listPlaybooks fetches from API with ACCESS-KEY header", async () => {
-			const mockResponse = [
-				{
-					strategy_id: "live-strategy",
-					name: "Live Strategy",
-					trading_symbols: ["ETHUSDT"],
-					official_metrics: {
-						max_drawdown_pct: 8.0,
-						sharpe_ratio: 2.1,
-						total_return_pct: 60.0,
-						total_trades: 200,
-					},
-					execution_mode: "follow_trade",
+			const mockResponse = {
+				code: "00000",
+				data: {
+					items: [
+						{
+							strategy_id: "live-strategy",
+							name: "Live Strategy",
+							trading_symbols: ["ETHUSDT"],
+							official_metrics: {
+								max_drawdown_pct: 8.0,
+								sharpe_ratio: 2.1,
+								total_return_pct: 60.0,
+								total_trades: 200,
+							},
+							execution_mode: "follow_trade",
+						},
+					],
 				},
-			];
+			};
 
 			mockFetch.mockResolvedValue({
 				ok: true,
@@ -80,7 +85,7 @@ describe("PlaybookClient", () => {
 			expect(playbooks[0].strategy_id).toBe("live-strategy");
 
 			expect(mockFetch).toHaveBeenCalledWith(
-				"https://api.bitget.com/api/v1/getagent/playbooks",
+				"https://api.bitget.com/api/v1/playbook/list",
 				expect.objectContaining({
 					headers: expect.objectContaining({
 						"ACCESS-KEY": "test-access-key",

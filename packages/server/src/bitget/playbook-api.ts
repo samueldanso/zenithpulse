@@ -1,12 +1,14 @@
 import { z } from "zod";
 import type { AppConfig } from "../config.js";
 
-const officialMetricsSchema = z.object({
-	max_drawdown_pct: z.number(),
-	sharpe_ratio: z.number(),
-	total_return_pct: z.number(),
-	total_trades: z.number(),
-});
+const officialMetricsSchema = z
+	.object({
+		max_drawdown_pct: z.number().optional().default(0),
+		sharpe_ratio: z.number().optional().default(0),
+		total_return_pct: z.number().optional().default(0),
+		total_trades: z.number().optional().default(0),
+	})
+	.default({});
 
 const playbookSchema = z.object({
 	strategy_id: z.string(),
@@ -16,7 +18,12 @@ const playbookSchema = z.object({
 	execution_mode: z.enum(["signal_only", "follow_trade"]),
 });
 
-const playbookListSchema = z.array(playbookSchema);
+const playbookListResponseSchema = z.object({
+	code: z.string(),
+	data: z.object({
+		items: z.array(playbookSchema),
+	}),
+});
 
 const playbookRunSchema = z.object({
 	run_id: z.string(),
@@ -28,8 +35,8 @@ const playbookRunSchema = z.object({
 	execution_mode: z.enum(["signal_only", "follow_trade"]),
 });
 
-export type Playbook = z.infer<typeof playbookSchema>;
-export type PlaybookRun = z.infer<typeof playbookRunSchema>;
+export type Playbook = z.output<typeof playbookSchema>;
+export type PlaybookRun = z.output<typeof playbookRunSchema>;
 
 const MOCK_PLAYBOOKS: Playbook[] = [
 	{
@@ -69,7 +76,7 @@ export function createPlaybookClient(config: AppConfig) {
 		console.warn("[playbook-api] PLAYBOOK_ACCESS_KEY not set — using mock data");
 	}
 
-	async function fetchApi<T>(path: string, schema: z.ZodType<T>): Promise<T> {
+	async function fetchApi<S extends z.ZodTypeAny>(path: string, schema: S): Promise<z.output<S>> {
 		const response = await fetch(`${baseUrl}${path}`, {
 			headers: {
 				"ACCESS-KEY": accessKey ?? "",
@@ -90,7 +97,8 @@ export function createPlaybookClient(config: AppConfig) {
 			if (!accessKey) {
 				return MOCK_PLAYBOOKS;
 			}
-			return fetchApi("/api/v1/getagent/playbooks", playbookListSchema);
+			const response = await fetchApi("/api/v1/playbook/list", playbookListResponseSchema);
+			return response.data.items;
 		},
 
 		async getPlaybookRun(runId: string): Promise<PlaybookRun> {
