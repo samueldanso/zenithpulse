@@ -59,7 +59,7 @@ describe("pollLiveState", () => {
 		expect(state.accountBalance).toBe(5000);
 		expect(state.openOrders).toEqual(orders);
 		expect(state.positions).toEqual(positions);
-		expect(state.totalExposure).toBe(25000); // 0.5 * 50000
+		expect(state.totalExposure).toBe(30000); // positions: 0.5*50000=25000 + order: 0.1*50000=5000
 		expect(state.currentDrawdown).toBe(0); // first poll, balance is peak
 		expect(state.rollingSharpe).toBe(0);
 		expect(state.timestamp).toBeTruthy();

@@ -20,7 +20,7 @@ export async function pollLiveState(bitgetClient: BitgetClient): Promise<LiveSta
 		peakBalance = accountBalance;
 	}
 
-	const totalExposure = computeTotalExposure(positions);
+	const totalExposure = computeTotalExposure(positions, openOrders);
 	const currentDrawdown = computeCurrentDrawdown(accountBalance, peakBalance);
 
 	return {

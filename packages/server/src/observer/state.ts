@@ -1,11 +1,19 @@
-import type { LiveState, Position } from "@zenithpulse/shared";
+import type { LiveState, Order, Position } from "@zenithpulse/shared";
 
-export function computeTotalExposure(positions: Position[]): number {
-	return positions.reduce((sum, p) => {
+export function computeTotalExposure(positions: Position[], openOrders: Order[]): number {
+	const positionNotional = positions.reduce((sum, p) => {
 		const size = Number.parseFloat(p.total) || 0;
 		const price = Number.parseFloat(p.averageOpenPrice) || 0;
 		return sum + size * price;
 	}, 0);
+	// Include unfilled open orders — they represent potential exposure
+	// if they fill and should be counted for oversize detection
+	const orderNotional = openOrders.reduce((sum, o) => {
+		const size = Number.parseFloat(o.size) || 0;
+		const price = Number.parseFloat(o.price) || 0;
+		return sum + size * price;
+	}, 0);
+	return positionNotional + orderNotional;
 }
 
 export function computeCurrentDrawdown(currentBalance: number, peakBalance: number): number {
