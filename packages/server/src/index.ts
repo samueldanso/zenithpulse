@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { routes } from "./api/routes.js";
+import { createRoutes } from "./api/routes.js";
 import { createBitgetClient } from "./bitget/client.js";
 import { createPlaybookClient } from "./bitget/playbook-api.js";
 import { loadConfig } from "./config.js";
@@ -16,6 +16,7 @@ const bitgetClient = createBitgetClient(config);
 const playbookClient = createPlaybookClient(config);
 
 const app = new Hono();
+const routes = createRoutes(db, config);
 app.route("/", routes);
 
 startObserver(config, db, bitgetClient, playbookClient);
