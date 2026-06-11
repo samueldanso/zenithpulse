@@ -23,6 +23,7 @@ export const traces = sqliteTable(
 			.references(() => playbooks.id),
 		timestamp: text("timestamp").notNull(),
 		liveStateJson: text("live_state_json").notNull(),
+		contractJson: text("contract_json").notNull().default("{}"),
 		driftResultsJson: text("drift_results_json").notNull(),
 		riskScore: real("risk_score").notNull(),
 		riskState: text("risk_state").notNull(),

@@ -20,6 +20,7 @@ const MIGRATIONS = [
 		playbook_id TEXT NOT NULL REFERENCES playbooks(id),
 		timestamp TEXT NOT NULL,
 		live_state_json TEXT NOT NULL,
+		contract_json TEXT NOT NULL DEFAULT '{}',
 		drift_results_json TEXT NOT NULL,
 		risk_score REAL NOT NULL,
 		risk_state TEXT NOT NULL,
