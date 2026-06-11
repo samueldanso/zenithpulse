@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AppConfig } from "../../src/config.js";
 
 const mockAll = vi.fn((): unknown[] => []);
 const mockGet = vi.fn((): unknown => undefined);
@@ -36,10 +37,10 @@ describe("playbook routes", () => {
 		mockConfig.MODE_DEFAULT = "observe";
 
 		const { createPlaybookRoutes } = await import("../../src/api/routes/playbooks.js");
-		// biome-ignore lint/suspicious/noExplicitAny: test mock
 		app = new Hono().route(
 			"/api/playbooks",
-			createPlaybookRoutes(mockDb as any, mockConfig as any),
+			// biome-ignore lint/suspicious/noExplicitAny: vitest mock cannot satisfy full Drizzle type
+			createPlaybookRoutes(mockDb as any, mockConfig as AppConfig),
 		);
 	});
 
