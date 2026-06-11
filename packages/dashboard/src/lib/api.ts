@@ -19,10 +19,15 @@ export interface Playbook {
 	riskState: RiskState;
 	lastObservedAt: string | null;
 	contract?: {
-		allowedAssets: string[];
+		playbookId: string;
+		derivedAt: string;
+		allowedSymbols: string[];
 		maxDrawdownPct: number;
-		maxExposureUsdt: number;
-		minSharpeRatio: number;
+		backTestSharpe: number;
+		marginBudget: number;
+		executionMode: string;
+		expectedReturnPct: number;
+		totalTrades: number;
 	} | null;
 }
 

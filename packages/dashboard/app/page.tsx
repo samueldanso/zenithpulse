@@ -35,9 +35,10 @@ export default function OverviewPage() {
 
 	const { connected } = useEvents(handleCycle);
 
-	const formatUptime = (seconds: number) => {
-		const h = Math.floor(seconds / 3600);
-		const m = Math.floor((seconds % 3600) / 60);
+	const formatUptime = (ms: number) => {
+		const totalSeconds = Math.floor(ms / 1000);
+		const h = Math.floor(totalSeconds / 3600);
+		const m = Math.floor((totalSeconds % 3600) / 60);
 		return `${h}h ${m}m`;
 	};
 

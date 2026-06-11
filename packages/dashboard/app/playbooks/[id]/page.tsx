@@ -101,7 +101,7 @@ export default function PlaybookDetailPage({ params }: { params: Promise<{ id: s
 									Assets
 								</dt>
 								<dd className="mt-0.5 font-mono text-sm">
-									{playbook.contract.allowedAssets.join(", ")}
+									{playbook.contract.allowedSymbols.join(", ")}
 								</dd>
 							</div>
 							<div>
@@ -112,17 +112,17 @@ export default function PlaybookDetailPage({ params }: { params: Promise<{ id: s
 							</div>
 							<div>
 								<dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
-									Max Exposure
+									Margin Budget
 								</dt>
 								<dd className="mt-0.5 font-mono text-sm">
-									${playbook.contract.maxExposureUsdt.toLocaleString()}
+									${playbook.contract.marginBudget.toLocaleString()}
 								</dd>
 							</div>
 							<div>
 								<dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
-									Min Sharpe
+									Backtest Sharpe
 								</dt>
-								<dd className="mt-0.5 font-mono text-sm">{playbook.contract.minSharpeRatio}</dd>
+								<dd className="mt-0.5 font-mono text-sm">{playbook.contract.backTestSharpe}</dd>
 							</div>
 						</dl>
 					</div>
