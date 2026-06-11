@@ -1,5 +1,6 @@
 import type { BehavioralContract, DriftResult, LiveState } from "@zenithpulse/shared";
 import { eq } from "drizzle-orm";
+import { eventBus } from "../api/emitter.js";
 import type { BitgetClient } from "../bitget/client.js";
 import type { PlaybookClient } from "../bitget/playbook-api.js";
 import type { AppConfig } from "../config.js";
@@ -24,6 +25,9 @@ import { pollLiveState } from "./poller.js";
 
 type Db = ReturnType<typeof getDb>;
 
+export let observerRunning = false;
+export let lastCycleAt: string | null = null;
+
 interface ObserverState {
 	timer: ReturnType<typeof setInterval> | null;
 	running: boolean;
@@ -44,6 +48,7 @@ export function start(
 ): void {
 	if (state.running) return;
 	state.running = true;
+	observerRunning = true;
 
 	console.log(`[observer] Starting loop — interval ${config.POLL_INTERVAL_MS}ms`);
 
@@ -56,6 +61,7 @@ export function start(
 export function stop(): void {
 	if (!state.running) return;
 	state.running = false;
+	observerRunning = false;
 
 	if (state.timer) {
 		clearInterval(state.timer);
@@ -143,7 +149,27 @@ async function runCycle(db: Db, bitgetClient: BitgetClient, config: AppConfig): 
 				actionResults,
 			});
 			saveTrace(db, trace);
+			lastCycleAt = trace.timestamp;
 			console.log(`[trace] saved trace ${trace.id} — ${trace.reasoning.slice(0, 80)}`);
+
+			eventBus.emit("cycle", {
+				playbookId: pb.id,
+				cycleId,
+				riskScore,
+				riskState,
+				driftCount: driftResults.filter((d) => d.result !== "pass").length,
+				timestamp: trace.timestamp,
+			});
+
+			if (trace.enforcementAction !== "none") {
+				eventBus.emit("enforcement", {
+					playbookId: pb.id,
+					action: trace.enforcementAction,
+					target: trace.actionTarget,
+					result: trace.actionResult,
+					timestamp: trace.timestamp,
+				});
+			}
 
 			stubAlert(config.MODE_DEFAULT, driftResults);
 		}
