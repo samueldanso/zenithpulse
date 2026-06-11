@@ -1,4 +1,4 @@
-import type { BehavioralContract, LiveState } from "@zenithpulse/shared";
+import type { BehavioralContract, DriftResult, LiveState } from "@zenithpulse/shared";
 import { eq } from "drizzle-orm";
 import type { BitgetClient } from "../bitget/client.js";
 import type { PlaybookClient } from "../bitget/playbook-api.js";
@@ -6,7 +6,15 @@ import type { AppConfig } from "../config.js";
 import { deriveContract } from "../contract/derive.js";
 import { loadContract, saveContract } from "../contract/store.js";
 import type { getDb } from "../db/client.js";
+import { updatePlaybookRiskState } from "../db/queries.js";
 import * as schema from "../db/schema.js";
+import {
+	detectAssetDrift,
+	detectDrawdownBreach,
+	detectOversize,
+	detectSharpeDegradation,
+} from "../drift/detect.js";
+import { computeRiskScore, getRiskState } from "../drift/score.js";
 import { pollLiveState } from "./poller.js";
 
 type Db = ReturnType<typeof getDb>;
@@ -97,8 +105,20 @@ async function runCycle(db: Db, bitgetClient: BitgetClient, config: AppConfig): 
 
 			logCycleSummary(pb.id, liveState);
 
-			const driftResults = stubDetect(contract, liveState);
-			const riskScore = stubScore(driftResults);
+			const driftResults = runDetection(contract, liveState);
+			const riskScore = computeRiskScore(contract, liveState);
+			const riskState = getRiskState(riskScore);
+
+			updatePlaybookRiskState(db, pb.id, riskScore, riskState);
+
+			for (const drift of driftResults) {
+				if (drift.result !== "pass") {
+					console.log(
+						`[observer] drift: ${drift.ruleId} ${drift.result} observed=${drift.observedValue} bound=${drift.contractBound}`,
+					);
+				}
+			}
+
 			const enforcement = stubEnforce(config.MODE_DEFAULT, driftResults);
 			stubTrace(pb.id, liveState, contract, driftResults, riskScore, enforcement);
 			stubAlert(config.MODE_DEFAULT, driftResults);
@@ -116,17 +136,16 @@ function logCycleSummary(playbookId: string, state: LiveState): void {
 	);
 }
 
-function stubDetect(_contract: BehavioralContract, _state: LiveState): unknown[] {
-	console.log("  stub: detect called");
-	return [];
+function runDetection(contract: BehavioralContract, state: LiveState): DriftResult[] {
+	return [
+		detectAssetDrift(contract, state),
+		detectOversize(contract, state),
+		detectDrawdownBreach(contract, state),
+		detectSharpeDegradation(contract, state),
+	];
 }
 
-function stubScore(_driftResults: unknown[]): number {
-	console.log("  stub: score called");
-	return 0;
-}
-
-function stubEnforce(_mode: string, _driftResults: unknown[]): string {
+function stubEnforce(_mode: string, _driftResults: DriftResult[]): string {
 	console.log("  stub: enforce called");
 	return "none";
 }
@@ -135,13 +154,13 @@ function stubTrace(
 	_playbookId: string,
 	_state: LiveState,
 	_contract: BehavioralContract,
-	_driftResults: unknown[],
+	_driftResults: DriftResult[],
 	_riskScore: number,
 	_enforcement: string,
 ): void {
 	console.log("  stub: trace called");
 }
 
-function stubAlert(_mode: string, _driftResults: unknown[]): void {
+function stubAlert(_mode: string, _driftResults: DriftResult[]): void {
 	console.log("  stub: alert called");
 }

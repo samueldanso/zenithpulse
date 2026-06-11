@@ -74,6 +74,10 @@ vi.mock("../../src/observer/poller.js", () => ({
 	})),
 }));
 
+vi.mock("../../src/db/queries.js", () => ({
+	updatePlaybookRiskState: vi.fn(),
+}));
+
 function createMockConfig(overrides?: Partial<AppConfig>): AppConfig {
 	return {
 		BITGET_API_KEY: "test",
