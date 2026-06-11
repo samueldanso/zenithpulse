@@ -288,7 +288,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 - [ ] `detectOversize(contract, state)` → violation when exposure > margin budget
 - [ ] `detectDrawdownBreach(contract, state)` → violation when drawdown > max
 - [ ] `detectSharpeDegradation(contract, state)` → warn when rolling < backtest
-- [ ] Each returns `pass` when within bounds
+- [x] Each returns `pass` when within bounds
 
 **Verification:**
 - `bun run --filter @zenithpulse/server test` — all drift rule tests pass
@@ -309,10 +309,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Implement the `computeRiskScore` function from the spec. Takes contract + state, returns 0–100 score using max-of-weighted-factors formula.
 
 **Acceptance criteria:**
-- [ ] Score = 0 when all rules pass (no drift)
-- [ ] Score ≥ 70 when drawdown at 100% of max (critical)
-- [ ] Score = 25 when one asset drifts but nothing else
-- [ ] Risk state maps correctly: 0–39 healthy, 40–69 elevated, 70–100 critical
+- [x] Score = 0 when all rules pass (no drift)
+- [x] Score ≥ 70 when drawdown at 100% of max (critical)
+- [x] Score = 25 when one asset drifts but nothing else
+- [x] Risk state maps correctly: 0–39 healthy, 40–69 elevated, 70–100 critical
 
 **Verification:**
 - Unit tests with known inputs → expected scores
@@ -332,10 +332,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Replace stub in observer loop with real drift detection and risk scoring. Each cycle now evaluates all rules and computes risk score. Update playbook risk state in DB.
 
 **Acceptance criteria:**
-- [ ] Observer logs drift results per cycle
-- [ ] Risk score computed and logged
-- [ ] `playbooks` table updated with `risk_score` and `risk_state` each cycle
-- [ ] No enforcement yet (still stub)
+- [x] Observer logs drift results per cycle
+- [x] Risk score computed and logged
+- [x] `playbooks` table updated with `risk_score` and `risk_state` each cycle
+- [x] No enforcement yet (still stub)
 
 **Verification:**
 - Start server → manually check DB shows updating risk scores
@@ -351,9 +351,9 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 ---
 
 ### Checkpoint: Drift + Scoring
-- [ ] Observer detects drift when state violates contract
-- [ ] Risk score reflects severity correctly
-- [ ] DB shows live risk state per playbook
+- [x] Observer detects drift when state violates contract
+- [x] Risk score reflects severity correctly
+- [x] DB shows live risk state per playbook
 
 ---
 
@@ -364,10 +364,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Pure function: given `DriftResult[]` + `OperatingMode` → decide which enforcement actions to take. Returns action descriptors (what to cancel, what to close).
 
 **Acceptance criteria:**
-- [ ] Mode = enforce + violation → returns action
-- [ ] Mode = observe + violation → returns `none`
-- [ ] Mode = silent + violation → returns `none`
-- [ ] Maps violation type to correct action (asset drift → cancel order, drawdown → close position)
+- [x] Mode = enforce + violation → returns action
+- [x] Mode = observe + violation → returns `none`
+- [x] Mode = silent + violation → returns `none`
+- [x] Maps violation type to correct action (asset drift → cancel order, drawdown → close position)
 
 **Verification:**
 - Unit tests covering all mode × violation combinations
@@ -388,10 +388,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Functions that execute enforcement via Bitget futures mix API — cancel order by ID (`futures_cancel_orders`), cancel plan order (futures plan), close position via market order (`futures_place_order` with `tradeSide: "close"`).
 
 **Acceptance criteria:**
-- [ ] `cancelOrder(orderId, symbol)` calls `futures_cancel_orders` → returns success/fail
-- [ ] `cancelPlanOrder(orderId, symbol)` cancels futures plan (trigger) order
-- [ ] `closePosition(symbol, size)` places `futures_place_order` with `tradeSide: "close"` → closes position
-- [ ] All actions return structured result (success + orderId, or failed + error)
+- [x] `cancelOrder(orderId, symbol)` calls `futures_cancel_orders` → returns success/fail
+- [x] `cancelPlanOrder(orderId, symbol)` cancels futures plan (trigger) order
+- [x] `closePosition(symbol, size)` places `futures_place_order` with `tradeSide: "close"` → closes position
+- [x] All actions return structured result (success + orderId, or failed + error)
 
 **Verification:**
 - Unit test: mocked API → correct request params sent
@@ -412,10 +412,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Replace enforcement stub in observer loop. After drift detection, if mode=enforce and violations exist, execute enforcement actions.
 
 **Acceptance criteria:**
-- [ ] Enforcement fires only in `enforce` mode
-- [ ] Correct action type per violation (cancel order for asset drift, close position for drawdown)
-- [ ] Action result (success/fail) captured for trace
-- [ ] Observer loop continues even if enforcement fails
+- [x] Enforcement fires only in `enforce` mode
+- [x] Correct action type per violation (cancel order for asset drift, close position for drawdown)
+- [x] Action result (success/fail) captured for trace
+- [x] Observer loop continues even if enforcement fails
 
 **Verification:**
 - Integration: set mode=enforce → place wrong-symbol order → order cancelled within 30s
@@ -430,9 +430,9 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 ---
 
 ### Checkpoint: Enforcement
-- [ ] In enforce mode: violating limit order cancelled automatically
-- [ ] In observe mode: violation detected but no action taken
-- [ ] Enforcement result captured (success/fail)
+- [x] In enforce mode: violating limit order cancelled automatically
+- [x] In observe mode: violation detected but no action taken
+- [x] Enforcement result captured (success/fail)
 
 ---
 
@@ -443,9 +443,9 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Function that assembles a complete `DecisionTrace` from cycle data — state snapshot, contract, drift results, risk score, enforcement action, and human-readable reasoning string.
 
 **Acceptance criteria:**
-- [ ] Produces valid DecisionTrace with all fields from spec
-- [ ] Reasoning string is human-readable: "Detected ETHUSDT order — not in allowed set [BTCUSDT]. Risk score 25 (elevated). Action: cancelled order abc123."
-- [ ] Handles pass case: "All 4 rules passed. Risk score 0 (healthy). No action."
+- [x] Produces valid DecisionTrace with all fields from spec
+- [x] Reasoning string is human-readable: "Detected ETHUSDT order — not in allowed set [BTCUSDT]. Risk score 25 (elevated). Action: cancelled order abc123."
+- [x] Handles pass case: "All 4 rules passed. Risk score 0 (healthy). No action."
 
 **Verification:**
 - Unit tests: various scenarios → correct trace assembly + reasoning
@@ -466,10 +466,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Write decision trace to SQLite `traces` table after each cycle. Query functions for listing traces (paginated, filterable).
 
 **Acceptance criteria:**
-- [ ] `saveTrace(trace)` persists to DB
-- [ ] `listTraces({ playbookId, limit, offset, action })` returns filtered results
-- [ ] `getTrace(id)` returns single trace with full detail
-- [ ] JSON fields (live_state, drift_results) round-trip correctly
+- [x] `saveTrace(trace)` persists to DB
+- [x] `listTraces({ playbookId, limit, offset, action })` returns filtered results
+- [x] `getTrace(id)` returns single trace with full detail
+- [x] JSON fields (live_state, drift_results) round-trip correctly
 
 **Verification:**
 - Integration test: save → list → get → data matches
@@ -489,9 +489,9 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** After drift + enforcement in each cycle, build trace and persist it. Emit the trace for SSE and alerts.
 
 **Acceptance criteria:**
-- [ ] Every cycle produces a trace in SQLite
-- [ ] Trace includes enforcement result if action was taken
-- [ ] Pass cycles also traced (full audit trail)
+- [x] Every cycle produces a trace in SQLite
+- [x] Trace includes enforcement result if action was taken
+- [x] Pass cycles also traced (full audit trail)
 
 **Verification:**
 - Start server → let run 3 cycles → query DB → 3 traces exist
