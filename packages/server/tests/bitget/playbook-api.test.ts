@@ -29,6 +29,7 @@ describe("PlaybookClient", () => {
 			expect(playbooks[0].trading_symbols).toEqual(["BTCUSDT"]);
 			expect(playbooks[0].official_metrics.max_drawdown_pct).toBe(12.5);
 			expect(playbooks[0].official_metrics.sharpe_ratio).toBe(1.8);
+			expect(playbooks[0].official_metrics.margin_budget).toBe(1000);
 			expect(playbooks[0].execution_mode).toBe("follow_trade");
 		});
 
@@ -64,10 +65,13 @@ describe("PlaybookClient", () => {
 							name: "Live Strategy",
 							trading_symbols: ["ETHUSDT"],
 							official_metrics: {
-								max_drawdown_pct: 8.0,
-								sharpe_ratio: 2.1,
-								total_return_pct: 60.0,
-								total_trades: 200,
+								summary: {
+									max_drawdown_pct: 8.0,
+									sharpe_ratio: 2.1,
+									total_return_pct: 60.0,
+									total_trades: 200,
+									margin_budget: 500,
+								},
 							},
 							execution_mode: "follow_trade",
 						},
@@ -102,10 +106,13 @@ describe("PlaybookClient", () => {
 				status: "running",
 				trading_symbols: ["ETHUSDT"],
 				official_metrics: {
-					max_drawdown_pct: 8.0,
-					sharpe_ratio: 2.1,
-					total_return_pct: 60.0,
-					total_trades: 200,
+					summary: {
+						max_drawdown_pct: 8.0,
+						sharpe_ratio: 2.1,
+						total_return_pct: 60.0,
+						total_trades: 200,
+						margin_budget: 500,
+					},
 				},
 				execution_mode: "follow_trade",
 			};

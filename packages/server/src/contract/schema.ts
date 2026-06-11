@@ -5,6 +5,7 @@ export const officialMetricsSchema = z.object({
 	sharpe_ratio: z.number().optional(),
 	total_return_pct: z.number().optional(),
 	total_trades: z.number().optional(),
+	margin_budget: z.number().optional(),
 });
 
 export const playbookDataSchema = z.object({

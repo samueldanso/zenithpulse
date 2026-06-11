@@ -31,9 +31,14 @@ export function deriveContract(playbookId: string, playbook: PlaybookData): Beha
 	const executionMode =
 		playbook.execution_mode ?? warnDefault("execution_mode", DEFAULTS.executionMode);
 
+	const metricsMarginBudget = metrics?.margin_budget;
 	const marginBudgetEnv = process.env.PLAYBOOK_MARGIN_BUDGET;
-	const parsed = marginBudgetEnv ? Number(marginBudgetEnv) : Number.NaN;
-	const marginBudget = Number.isFinite(parsed) ? parsed : DEFAULTS.marginBudget;
+	const parsedEnv = marginBudgetEnv ? Number(marginBudgetEnv) : Number.NaN;
+	const marginBudget = metricsMarginBudget
+		? metricsMarginBudget
+		: Number.isFinite(parsedEnv)
+			? parsedEnv
+			: DEFAULTS.marginBudget;
 
 	return {
 		playbookId,

@@ -11,6 +11,7 @@ const FULL_PLAYBOOK: PlaybookData = {
 		sharpe_ratio: 1.8,
 		total_return_pct: 45.2,
 		total_trades: 142,
+		margin_budget: 1000,
 	},
 	execution_mode: "follow_trade",
 };
@@ -59,16 +60,41 @@ describe("deriveContract", () => {
 		expect(contract.totalTrades).toBeDefined();
 	});
 
-	it("uses PLAYBOOK_MARGIN_BUDGET env var for marginBudget", () => {
+	it("uses margin_budget from official_metrics when available", () => {
 		process.env.PLAYBOOK_MARGIN_BUDGET = "250";
 		const contract = deriveContract("test-id", FULL_PLAYBOOK);
+		expect(contract.marginBudget).toBe(1000);
+		process.env.PLAYBOOK_MARGIN_BUDGET = undefined;
+	});
+
+	it("falls back to PLAYBOOK_MARGIN_BUDGET env var when metrics lack margin_budget", () => {
+		process.env.PLAYBOOK_MARGIN_BUDGET = "250";
+		const noMarginBudget: PlaybookData = {
+			...FULL_PLAYBOOK,
+			official_metrics: {
+				max_drawdown_pct: 12.5,
+				sharpe_ratio: 1.8,
+				total_return_pct: 45.2,
+				total_trades: 142,
+			},
+		};
+		const contract = deriveContract("test-id", noMarginBudget);
 		expect(contract.marginBudget).toBe(250);
 		process.env.PLAYBOOK_MARGIN_BUDGET = undefined;
 	});
 
-	it("uses default marginBudget when env var is not set", () => {
+	it("uses default marginBudget when neither metrics nor env var provide it", () => {
 		process.env.PLAYBOOK_MARGIN_BUDGET = undefined;
-		const contract = deriveContract("test-id", FULL_PLAYBOOK);
+		const noMarginBudget: PlaybookData = {
+			...FULL_PLAYBOOK,
+			official_metrics: {
+				max_drawdown_pct: 12.5,
+				sharpe_ratio: 1.8,
+				total_return_pct: 45.2,
+				total_trades: 142,
+			},
+		};
+		const contract = deriveContract("test-id", noMarginBudget);
 		expect(contract.marginBudget).toBe(100);
 	});
 

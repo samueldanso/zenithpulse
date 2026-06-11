@@ -3,12 +3,30 @@ import type { AppConfig } from "../config.js";
 
 const officialMetricsSchema = z
 	.object({
-		max_drawdown_pct: z.number().optional().default(0),
-		sharpe_ratio: z.number().optional().default(0),
-		total_return_pct: z.number().optional().default(0),
-		total_trades: z.number().optional().default(0),
+		summary: z
+			.object({
+				sharpe_ratio: z.number().optional().default(0),
+				max_drawdown_pct: z.number().optional().default(0),
+				total_return_pct: z.number().optional().default(0),
+				total_trades: z.number().optional().default(0),
+				margin_budget: z.number().optional().default(0),
+			})
+			.optional(),
 	})
-	.default({});
+	.transform((m) => ({
+		sharpe_ratio: m.summary?.sharpe_ratio ?? 0,
+		max_drawdown_pct: m.summary?.max_drawdown_pct ?? 0,
+		total_return_pct: m.summary?.total_return_pct ?? 0,
+		total_trades: m.summary?.total_trades ?? 0,
+		margin_budget: m.summary?.margin_budget ?? 0,
+	}))
+	.catch({
+		sharpe_ratio: 0,
+		max_drawdown_pct: 0,
+		total_return_pct: 0,
+		total_trades: 0,
+		margin_budget: 0,
+	});
 
 const playbookSchema = z.object({
 	strategy_id: z.string(),
@@ -48,6 +66,7 @@ const MOCK_PLAYBOOKS: Playbook[] = [
 			sharpe_ratio: 1.8,
 			total_return_pct: 45.2,
 			total_trades: 142,
+			margin_budget: 1000,
 		},
 		execution_mode: "follow_trade",
 	},
@@ -64,6 +83,7 @@ const MOCK_RUN: PlaybookRun = {
 		sharpe_ratio: 1.8,
 		total_return_pct: 45.2,
 		total_trades: 142,
+		margin_budget: 1000,
 	},
 	execution_mode: "follow_trade",
 };
