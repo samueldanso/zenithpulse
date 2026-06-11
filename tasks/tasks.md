@@ -114,17 +114,19 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ### Task 5: Bitget API client wrapper
 
-**Description:** Import `bitget-core` from `.resources/agent_hub` and wrap it in a typed client. Expose methods for: get ticker, get account assets, get open orders, get plan orders, cancel order, cancel plan order, place order.
+**Description:** Import `bitget-core` from `.resources/agent_hub` and wrap it in a typed client. Exposes read methods (futures positions, open orders, plan orders, account balance) and write methods (cancel futures order, cancel plan order, close position via tradeSide:close). All calls target USDT-margined perpetual futures (`productType: USDT-FUTURES`).
 
 **Acceptance criteria:**
 - [ ] Client initializes with API key/secret/passphrase from config
-- [ ] `getTicker("BTCUSDT")` returns a price
-- [ ] All write methods typed and callable (cancel, place order)
+- [ ] `getFuturesPositions("USDT-FUTURES")` returns typed positions array
+- [ ] `cancelFuturesOrder(symbol, orderId)` calls `futures_cancel_orders` endpoint
+- [ ] `closeFuturesPosition(symbol, size)` places `futures_place_order` with `tradeSide: "close"`
 - [ ] Paper-trading mode flag routes to demo base URL
+- [ ] All write methods typed and callable
 
 **Verification:**
 - Unit test: mock responses → typed outputs
-- Integration (manual): `getTicker` returns live BTC price
+- Integration (manual, paper mode): `getFuturesPositions` returns positions array
 
 **Dependencies:** Task 3
 
@@ -359,13 +361,13 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ### Task 14: Enforcement decision logic
 
-**Description:** Pure function: given `DriftResult[]` + `OperatingMode` → decide which enforcement actions to take. Returns action descriptors (what to cancel, what to liquidate).
+**Description:** Pure function: given `DriftResult[]` + `OperatingMode` → decide which enforcement actions to take. Returns action descriptors (what to cancel, what to close).
 
 **Acceptance criteria:**
 - [ ] Mode = enforce + violation → returns action
 - [ ] Mode = observe + violation → returns `none`
 - [ ] Mode = silent + violation → returns `none`
-- [ ] Maps violation type to correct action (asset drift → cancel, drawdown → liquidate)
+- [ ] Maps violation type to correct action (asset drift → cancel order, drawdown → close position)
 
 **Verification:**
 - Unit tests covering all mode × violation combinations
@@ -381,14 +383,14 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ---
 
-### Task 15: Enforcement actions (cancel + liquidate)
+### Task 15: Enforcement actions (cancel + close position)
 
-**Description:** Functions that execute enforcement via Bitget API — cancel order by ID, cancel plan order, place market sell for liquidation.
+**Description:** Functions that execute enforcement via Bitget futures mix API — cancel order by ID (`futures_cancel_orders`), cancel plan order (futures plan), close position via market order (`futures_place_order` with `tradeSide: "close"`).
 
 **Acceptance criteria:**
-- [ ] `cancelOrder(orderId, symbol)` calls Bitget cancel endpoint → returns success/fail
-- [ ] `cancelPlanOrder(orderId, symbol)` calls plan cancel endpoint
-- [ ] `liquidatePosition(symbol, size)` places market sell order
+- [ ] `cancelOrder(orderId, symbol)` calls `futures_cancel_orders` → returns success/fail
+- [ ] `cancelPlanOrder(orderId, symbol)` cancels futures plan (trigger) order
+- [ ] `closePosition(symbol, size)` places `futures_place_order` with `tradeSide: "close"` → closes position
 - [ ] All actions return structured result (success + orderId, or failed + error)
 
 **Verification:**
@@ -411,7 +413,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 **Acceptance criteria:**
 - [ ] Enforcement fires only in `enforce` mode
-- [ ] Correct action type per violation (cancel for asset drift, liquidate for drawdown)
+- [ ] Correct action type per violation (cancel order for asset drift, close position for drawdown)
 - [ ] Action result (success/fail) captured for trace
 - [ ] Observer loop continues even if enforcement fails
 
@@ -642,17 +644,19 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ### Task 25: API authentication middleware
 
-**Description:** Hono middleware that validates `Authorization: Bearer <token>` on all `/api/*` routes. Token sourced from `ZENITHPULSE_API_KEY` env var.
+**Description:** Hono middleware that validates `Authorization: Bearer *** on all `/api/*` routes. Token sourced from `ZENITHPULSE_API_KEY` env var.
 
 **Acceptance criteria:**
 - [ ] Valid token → request proceeds
 - [ ] Missing or wrong token → 401 `{ error: "unauthorized" }`
 - [ ] Health endpoint (`/api/health`) exempt from auth
+- [ ] `/skill.md` route exempt from auth
 - [ ] Token comparison is constant-time (no timing attacks)
 
 **Verification:**
 - `curl /api/playbooks` without header → 401
-- `curl /api/playbooks -H "Authorization: Bearer $KEY"` → 200
+- `curl /api/playbooks -H "Authorization: Bearer *** → 200
+- `curl /skill.md` (no header) → 200
 
 **Dependencies:** Task 22
 
@@ -664,27 +668,36 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ---
 
-### Task 26: Webhook delivery
+### Task 26: SKILL.md — agent integration guide
 
-**Description:** After each observer cycle, if enforcement fired or risk state changed, POST the `DecisionTrace` to `WEBHOOK_URL`. Retry 3× with exponential backoff. No-op if `WEBHOOK_URL` not set.
+**Description:** Author a `packages/server/src/static/skill.md` file and serve it as a static Hono route on `GET /skill.md` with no authentication required. This is the machine-readable integration guide agents use to self-configure without reading external docs.
+
+**Content must include:**
+- Product description (one paragraph, plain text)
+- MCP config JSON block (copy-paste ready)
+- All 5 MCP tools: name, description, input params, one example call
+- REST API quick-start: register playbook, get risk score, list traces — curl examples with auth header
+- CLI quick-start: `bunx zenithpulse start`, `bunx zenithpulse status`
+- Required environment variables table
+- One integration narrative: "Pass this URL to your coding agent and it will configure ZenithPulse automatically."
 
 **Acceptance criteria:**
-- [ ] POST fires on `enforcement_action != 'none'`
-- [ ] POST fires on risk state change (healthy → elevated, etc.)
-- [ ] Payload is full `DecisionTrace` JSON
-- [ ] Header `X-ZenithPulse-Event: enforcement_action | risk_state_change`
-- [ ] Retries 3× on non-2xx response
-- [ ] Silent no-op when `WEBHOOK_URL` not configured
+- [ ] `packages/server/src/static/skill.md` exists and is valid Markdown
+- [ ] Hono route `GET /skill.md` serves the file with `Content-Type: text/markdown`
+- [ ] No authentication required — returns 200 without `Authorization` header
+- [ ] File is < 3000 characters (fast to ingest by any agent)
+- [ ] MCP config block is valid JSON
+- [ ] All curl examples use placeholder `$ZENITHPULSE_API_KEY` (not hardcoded)
 
 **Verification:**
-- Unit test: mock fetch → correct payload + headers
-- Integration: set `WEBHOOK_URL` to a local listener → trigger violation → POST received
+- `curl http://localhost:3001/skill.md` → 200, `Content-Type: text/markdown`, valid Markdown
+- Load URL in Claude Code MCP client → agent can configure ZenithPulse from the guide alone
 
-**Dependencies:** Task 19
+**Dependencies:** Task 22
 
 **Files:**
-- `packages/server/src/alerts/webhooks.ts`
-- `packages/server/src/observer/loop.ts` (wire webhook call)
+- `packages/server/src/static/skill.md`
+- `packages/server/src/api/routes.ts` (register `/skill.md` route)
 
 **Scope:** S
 
@@ -749,10 +762,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ### Checkpoint: Integration Surface
 - [ ] REST API rejects unauthenticated requests
-- [ ] Webhook fires on enforcement/risk state change
 - [ ] MCP server starts and all 5 tools respond correctly
 - [ ] `bunx zenithpulse start` boots the full runtime
 - [ ] `bunx zenithpulse status` returns health
+- [ ] `GET /skill.md` returns 200 with agent-readable Markdown (no auth)
 
 ---
 
@@ -912,7 +925,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ### Task 35: README + packaging
 
-**Description:** Write README with: what it is, integration surface (REST API, MCP, CLI, webhooks), quick start, env setup, demo instructions. Package.json metadata for `npm publish`.
+**Description:** Write README with: what it is, integration surface (REST API, MCP, CLI, SKILL.md), quick start, env setup, demo instructions. Package.json metadata for `npm publish`.
 
 **Acceptance criteria:**
 - [ ] README opens with what ZenithPulse is (2 sentences)

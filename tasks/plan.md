@@ -30,7 +30,7 @@ Layer 9: Next.js dashboard
 | 1.1 | Monorepo scaffold: root package.json, workspaces, biome, tsconfig | Nothing | `bun install` succeeds, `bun run check` passes |
 | 1.2 | Shared types package (`@zenithpulse/shared`) | 1.1 | `bun run typecheck` passes |
 | 1.3 | Server package scaffold (Hono hello world) | 1.1 | `bun run --filter @zenithpulse/server dev` → responds on :3001 |
-| 1.4 | Bitget API client wrapper (import `bitget-core`, typed calls) | 1.1, 1.2 | Unit test: call `spot_get_ticker` for BTCUSDT → returns price |
+|| 1.4 | Bitget API client wrapper (import `bitget-core`, typed calls) | 1.1, 1.2 | Unit test: call `futures_get_positions` for USDT-FUTURES → returns positions array |
 | 1.5 | Playbook API client (HTTP to getagent-skill endpoints) | 1.1, 1.2 | Mock test: given API response → parsed into typed struct |
 | 1.6 | SQLite + Drizzle setup (schema, migrations, connection) | 1.3 | `bun run --filter @zenithpulse/server test` → tables created |
 | 1.7 | Environment config with Zod validation | 1.3 | Missing required env vars → clear error message |
@@ -73,14 +73,14 @@ Layer 9: Next.js dashboard
 
 ### Phase 4: Enforcement (Day 5–6)
 
-**Goal:** Cancel orders and liquidate positions in enforce mode.
+**Goal:** Cancel futures orders and close positions in enforce mode.
 
 | Step | What | Depends on | Verification |
 |---|---|---|---|
 | 4.1 | Enforcement decision logic (given DriftResult + mode → action) | 3.2 | Unit test: violation + enforce → cancel. violation + observe → none |
-| 4.2 | Cancel order action (call `spot_cancel_orders`) | 1.4 | Integration test: place + cancel a limit order in demo mode |
-| 4.3 | Cancel plan order action (call `spot_cancel_plan_orders`) | 1.4 | Integration test: place + cancel a trigger order in demo mode |
-| 4.4 | Liquidate action (market sell via `spot_place_order`) | 1.4 | Integration test: sell small position in demo mode |
+|| 4.2 | Cancel futures order action (`futures_cancel_orders`) | 1.4 | Integration test: place + cancel a limit futures order in demo mode |
+|| 4.3 | Cancel plan order action (futures plan orders) | 1.4 | Integration test: place + cancel a trigger order in demo mode |
+|| 4.4 | Close position action (`futures_place_order` tradeSide:close) | 1.4 | Integration test: open small position → close in demo mode |
 | 4.5 | Enforcement engine (orchestrate decision → action → result) | 4.1–4.4 | Integration: observer detects drift → enforcement fires → order gone |
 
 **Checkpoint:** In enforce mode, place a limit order on wrong symbol → ZenithPulse cancels it within 30s. Logged.
@@ -169,13 +169,13 @@ Layer 9: Next.js dashboard
 | 1–2 | Foundation | Monorepo builds, Bitget client works, DB ready |
 | 3–4 | Contract + Observer | Contract derives, observer polls live data |
 | 4–5 | Drift + Scoring | Drift detected, risk scored per cycle |
-| 5–6 | Enforcement | Orders cancelled, positions liquidated |
+| 5–6 | Enforcement | Futures orders cancelled, positions closed |
 | 6–7 | Trace + Alerts | Full audit log, Telegram alerts |
 | 7–8 | API | REST + SSE serving dashboard |
 | 8–10 | Dashboard | Real-time UI, mode switching |
 | 11–12 | Integration testing | End-to-end demo flow works |
-| 13–14 | Demo recording | 3-minute video produced |
-| 15 | Submission | Package, README, submit |
+|| 13–14 | Demo recording | 3-minute video produced |
+|| 15 | Submission | Package, README, SKILL.md, submit |
 
 **Buffer:** 2 days of overlap between phases. If any phase takes an extra day, timeline still holds.
 

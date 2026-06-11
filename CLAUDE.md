@@ -17,7 +17,15 @@ Hackathon: Bitget AI Base Camp S1 — Track 2 (Trading Infra).
 Brief → Setup & Spike → Refine Brief → PRD → SPEC → Plan → Build
 ```
 
-Current stage: **Plan** (signed off) → next is **Build**
+Current stage: **Build** (T1 scaffold complete, docs locked)
+
+**Key decisions locked:**
+- Perpetual futures (USDT-margined) — not spot
+- Enforcement: `futures_cancel_orders` + `futures_place_order` (tradeSide:close) — no spot sell
+- Webhooks: cut. Replaced with SKILL.md agent integration guide (`GET /skill.md`)
+- `margin_budget` not in list API → fallback: `PLAYBOOK_MARGIN_BUDGET` env var
+- `signal_only` Playbooks → enforcement disabled, observability on
+- Playbook API auth: `ACCESS-KEY: <key>` header — NOT `Authorization: Bearer`
 
 ## Agent Skill System
 
@@ -94,14 +102,15 @@ SHIP    → shipping-and-launch
 
 ## Bitget Integration Points
 
-- `bgc` / `bitget-core` — Live positions, orders, PnL (polling) + enforcement writes (cancel, sell)
-- `getagent-skill` API — Backtest metrics for behavioral contract derivation (HTTP)
+- `bgc` / `bitget-core` — Futures positions, orders, PnL (polling) + enforcement writes via mix endpoints (`futures_cancel_orders`, `futures_place_order` tradeSide:close). Target: USDT-margined perpetual futures.
+- `getagent-skill` API — Backtest metrics for behavioral contract derivation (HTTP, `ACCESS-KEY` header — NOT Bearer)
 - GetClaw — Narrative complement (Bitget signals), we build own bot for risk alerts
 
 ## Environment
 
 - Trading API keys in `.env` — working (verified)
-- Playbook API key — pending admin
+- Playbook API key — obtained (`PLAYBOOK_ACCESS_KEY`)
+- `PLAYBOOK_MARGIN_BUDGET` — fallback for margin_budget (not in list API response)
 - Demo API key — needed for paper-trading mode (separate from live key)
 - bgc CLI — available via npx
 
@@ -115,22 +124,24 @@ bun run check                      # biome lint + format
 bun run test                       # vitest
 bun run typecheck                  # tsc --noEmit
 
-# Bitget CLI (testing)
-npx bgc spot spot_get_ticker --symbol BTCUSDT
+# Bitget CLI (testing — futures)
+npx bgc mix futures_get_positions --productType USDT-FUTURES
 npx bgc account get_account_assets
 ```
 
 ## Constraints
 
-- Spot trading only (futures deferred)
+- Perpetual futures only (USDT-margined). Spot deferred.
 - No manual policy config (contracts are derived from backtest automatically)
 - Single-user local dashboard (no auth for demo)
 - Enforcement is reactive — cannot intercept market orders (instant fill)
-- Never place buy orders — ZenithPulse only cancels or sells-to-close
+- Never place buy orders — ZenithPulse only cancels orders or closes positions (tradeSide:close)
 - Default mode is `observe` — `enforce` requires explicit opt-in
+- `signal_only` Playbooks → enforcement disabled, observability + risk scoring remain active
 - No `as any`, `@ts-ignore`, `@ts-expect-error`
-- Follow official documentation practices when scaalfolding or installing anything
-- Write clear, concise and reaabable commit mesages, avoid using T1 L1 etc as commit mesages and nams which dont make sens in PR to team other temebers
+- No outbound webhook delivery (not in scope)
+- Follow official documentation practices when scaffolding or installing anything
+- Write clear, concise commit messages — one line, max 72 chars, `type(scope): description`, imperative, no period
 
 ## Locked Vocabulary
 

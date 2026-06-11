@@ -22,7 +22,7 @@ The runtime continuously monitors live execution against the contract:
 - **Decision trace** — every observation logged with structured reasoning (what was seen, which rule applied, result)
 - **Reactive enforcement** — when violations are detected in `enforce` mode:
   - Open orders outside policy → cancelled
-  - Filled positions breaching drawdown → liquidated via market sell
+  - Filled positions breaching drawdown → closed via `futures_place_order` (tradeSide:close)
   - Plan/trigger orders violating rules → cancelled before trigger fires
 - **Alerts** — Telegram notification within seconds of any violation or enforcement action
 
@@ -32,13 +32,15 @@ A Next.js dashboard shows per-Playbook health, portfolio rollup, risk scores, en
 - **Backtest-as-policy**: derive behavioral contracts from `getagent-skill` output automatically — zero manual config.
 - **Drift engine**: poll `bitget-core` for live positions, orders, PnL every 10–15 seconds. Detect deviation from contract.
 - **Risk scoring**: composite per-Playbook risk score, portfolio-level aggregate.
-- **Reactive enforcement**: auto-cancel violating orders, auto-liquidate breaching positions (in `enforce` mode).
+- **Reactive enforcement**: auto-cancel violating futures orders, auto-close breaching positions (in `enforce` mode).
 - **Decision trace**: structured forensic record per observation — what was seen, which rule applied, what happened.
 - **Audit log**: SQLite — every observation persisted with pass/violation result, enforcement action, reasoning.
 - **Alerts**: Telegram Bot API — violations, enforcement actions, drawdown breaches, Sharpe degradation.
 - **Three modes**: enforce (detect + act), observe (detect + alert only), silent (log only).
 - **Dashboard**: Next.js — per-Playbook health, portfolio rollup, risk scores, enforcement feed, audit trail.
-- Spot trading only (futures deferred).
+- **MCP server**: 5 tools (get_risk_score, get_contract, list_traces, set_mode, get_health) — agent-native integration for Claude Code, Cursor, Codex.
+- **SKILL.md**: served at `GET /skill.md` — machine-readable integration guide. Pass the URL to your agent; it configures ZenithPulse without reading docs.
+- Perpetual futures (USDT-margined). Spot deferred.
 - Reference demo: one Playbook deployed and monitored/enforced through ZenithPulse end-to-end.
 
 ## Out of scope
@@ -56,11 +58,11 @@ A Next.js dashboard shows per-Playbook health, portfolio rollup, risk scores, en
 - ZenithPulse reads the backtest and surfaces the derived behavioral contract automatically — no config written.
 - Live dashboard shows per-Playbook risk score streaming. Drift engine active. All green.
 - Playbook places a limit order on an asset outside its contract — drift detected, risk score degrades, enforcement fires (order cancelled). Decision trace logged. Telegram alert fires.
-- Drawdown crosses backtest threshold — enforcement liquidates the position via market sell. Risk score flips red. Second alert.
+- Drawdown crosses backtest threshold — position closed via `futures_place_order` (tradeSide:close). Risk score flips red. Second alert.
 - Audit log view opens — structured decision trace shows: observed state, contract rule (derived from backtest), enforcement action, reasoning.
 
 ## Success looks like
-- Integrates three Bitget products: `bgc` (live state + enforcement writes), `getagent-skill` (backtest → contract derivation), GetClaw (narrative complement for alerts).
+- Integrates three Bitget products: `bgc` (live state + enforcement writes via mix endpoints), `getagent-skill` (backtest → contract derivation), GetClaw (narrative complement). Integration surface: REST API + MCP server + CLI + SKILL.md — demonstrable API call volume through the stack.
 - `npm install zenithpulse` + Playbook API key = risk infrastructure live within 5 minutes, zero config.
 - 3-minute demo shows: backtest-as-policy derivation → drift detection → risk scoring → reactive enforcement → decision trace → Telegram alert. End-to-end.
 
@@ -80,23 +82,24 @@ ZenithPulse polls Bitget for live execution state via `bitget-core` and compares
 **Enforcement layer (active in `enforce` mode):**
 - Limit orders (GTC): detected and cancelled before fill (10–30s latency)
 - Plan/trigger orders: detected and cancelled before trigger fires
-- Filled positions breaching policy: liquidated via market sell
+- Filled positions breaching policy: closed via `futures_place_order` (tradeSide:close)
 - Market orders: cannot be intercepted (instant fill) — handled via position-level enforcement after fill
 
 **Three modes:**
-- `enforce` — detect + act (cancel orders, liquidate positions) + alert
+- `enforce` — detect + act (cancel futures orders, close positions) + alert
 - `observe` — detect + alert only, no action taken
 - `silent` — log only, no alerts, no action
 
-**Technical basis:**
-- `spot_cancel_orders` — cancel single, batch, or all orders for a symbol
-- `spot_cancel_plan_orders` — cancel pending trigger orders
-- `spot_place_order` (sell side) — liquidate spot positions
-- All confirmed as callable write operations in `bitget-core`
+**Technical basis (futures mix endpoints):**
+- `futures_cancel_orders` — cancel single or batch futures orders
+- `futures_cancel_orders` (cancelAll) — cancel all for product type
+- `futures_place_order` (tradeSide: close) — close a futures position
+- All confirmed as callable write operations in `bitget-core` mix module
+- Playbook API auth: `ACCESS-KEY: <key>` header — not Bearer
 - API key requires `Trade` permission (standard Bitget API key setup)
 
 **What makes this different from a dashboard:**
 - It has a **behavioral contract** derived from backtest — not arbitrary thresholds
-- It **acts** — cancels orders, liquidates positions
+- It **acts** — cancels orders, closes positions
 - Every observation has a **structured decision trace** — auditable, explainable
 - **Risk scoring** is continuous and composite, not binary pass/fail

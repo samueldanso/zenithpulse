@@ -120,17 +120,14 @@ bunx zenithpulse start --mcp       # also expose MCP server on stdio
 bunx zenithpulse status            # show runtime health
 ```
 
-### Webhooks
+### SKILL.md
 
-ZenithPulse POSTs to your endpoint when enforcement fires or risk state changes. Set `WEBHOOK_URL` in env. Payload is a `DecisionTrace` JSON object. Retry 3× on failure.
+ZenithPulse serves a machine-readable integration guide at `GET /skill.md`. No auth required.
 
-```bash
-# Your endpoint receives:
-POST https://your-app.com/hooks/zenithpulse
-Content-Type: application/json
-X-ZenithPulse-Event: enforcement_action | risk_state_change
-{ ...DecisionTrace }
-```
+Pass the URL to your coding agent:
+> "Configure ZenithPulse using the guide at http://localhost:3001/skill.md"
+
+The file covers: product description, MCP config JSON block, all 5 MCP tools with input params and examples, REST API curl examples with auth, CLI quick start. Served as a static Hono route from `packages/server/src/static/skill.md`.
 
 ---
 
@@ -173,8 +170,9 @@ zenithpulse/
 │   │   │   │   └── types.ts
 │   │   │   ├── alerts/
 │   │   │   │   ├── telegram.ts
-│   │   │   │   ├── webhooks.ts          # outbound webhook delivery
 │   │   │   │   └── types.ts
+│   │   │   ├── static/
+│   │   │   │   └── skill.md             # machine-readable agent integration guide
 │   │   │   ├── mcp/
 │   │   │   │   ├── server.ts            # MCP server setup
 │   │   │   │   └── tools.ts             # tool definitions + handlers
@@ -404,7 +402,7 @@ type RiskState = "healthy" | "elevated" | "critical";
 
 type RuleResult = "pass" | "warn" | "violation";
 
-type EnforcementAction = "none" | "cancel_order" | "cancel_plan_order" | "liquidate";
+type EnforcementAction = "none" | "cancel_order" | "cancel_plan_order" | "close_position";
 
 interface BehavioralContract {
   playbookId: string;
@@ -511,6 +509,7 @@ CREATE INDEX idx_traces_action ON traces(enforcement_action) WHERE enforcement_a
 | GET | `/api/traces/:id` | Single trace detail |
 | GET | `/api/events` | SSE stream — emits `trace`, `risk_state_change`, `enforcement_action` events |
 | GET | `/api/health` | Runtime health check |
+| GET | `/skill.md` | Agent integration guide (no auth required) |
 
 ---
 
@@ -538,7 +537,7 @@ MODE_DEFAULT=observe              # Default operating mode (default: observe)
 PAPER_TRADING=false               # Use Bitget demo environment (default: false)
 PORT=3001                         # Server port (default: 3001)
 DB_PATH=./data/zenithpulse.db     # SQLite file path
-WEBHOOK_URL=                      # Outbound webhook endpoint (optional)
+PLAYBOOK_MARGIN_BUDGET=100        # Fallback margin budget (USDT) — not in list API response
 ```
 
 ---
@@ -559,7 +558,7 @@ WEBHOOK_URL=                      # Outbound webhook endpoint (optional)
 - Adding new npm dependencies
 - Changing the database schema
 - Modifying polling interval below 10 seconds
-- Any change to enforcement logic (cancel/liquidate)
+- Any change to enforcement logic (cancel/close position)
 
 ### Never do:
 - Commit `.env` or any file containing secrets
@@ -576,17 +575,17 @@ WEBHOOK_URL=                      # Outbound webhook endpoint (optional)
 1. **Contract derivation works:** Given a Playbook ID, the system fetches backtest metrics and produces a valid `BehavioralContract` in < 5 seconds.
 2. **Drift detection works:** When live state deviates from contract (wrong symbol, oversize, drawdown breach), drift is detected within one polling cycle (≤ 15s).
 3. **Risk score is correct:** Score follows the defined formula. Score 0 when all rules pass. Score ≥ 70 when drawdown exceeds 100% of backtest max.
-4. **Enforcement works (enforce mode):** Violating limit orders are cancelled via Bitget API. Drawdown-breaching positions are liquidated via market sell. Action completes within 30s of violation.
+4. **Enforcement works (enforce mode):** Violating futures orders are cancelled via `futures_cancel_orders`. Drawdown-breaching positions are closed via `futures_place_order` (tradeSide:close). Action completes within 30s of violation.
 5. **Decision trace is complete:** Every observation cycle persists a trace with: state snapshot, contract, drift results, risk score, action (if any), reasoning.
 6. **Alerts fire:** Telegram message sent within 30s of detection in enforce/observe mode. Message includes playbook name, violation type, values.
 7. **Dashboard shows real-time state:** Portfolio view loads in < 2s. Updates within 15s of state change via SSE.
 8. **Mode switching works:** Changing mode from dashboard or via API immediately affects next observation cycle.
-9. **REST API is authenticated:** All endpoints reject requests without a valid `Authorization: Bearer <ZENITHPULSE_API_KEY>` header.
+9. **REST API is authenticated:** All endpoints reject requests without a valid `Authorization: Bearer <ZENIT...EY>` header.
 10. **MCP server works:** `bunx zenithpulse start --mcp` starts the runtime and exposes all 5 MCP tools. A client calling `get_risk_score` receives the current score.
 11. **CLI works:** `bunx zenithpulse start` starts server + dashboard. `bunx zenithpulse status` returns runtime health.
-12. **Webhooks fire:** When enforcement triggers, a POST with `DecisionTrace` payload is delivered to `WEBHOOK_URL` within 30s.
-13. **Zero config runtime:** Only env vars (API keys) + Playbook ID. No YAML, JSON, or rule files needed.
-14. **Demo scenario executable:** The 3-minute demo from PRD can be performed end-to-end in paper-trading mode.
+12. **Zero config runtime:** Only env vars (API keys) + Playbook ID. No YAML, JSON, or rule files needed.
+13. **Demo scenario executable:** The 3-minute demo from PRD can be performed end-to-end in paper-trading mode.
+14. **SKILL.md served:** `GET /skill.md` returns a machine-readable integration guide. An agent loading this URL can configure and call ZenithPulse without additional docs.
 
 ---
 

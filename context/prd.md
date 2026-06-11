@@ -36,7 +36,7 @@ ZenithPulse fills this gap with six components:
 4. **Reactive enforcement** — in `enforce` mode, acts on violations:
    - Open limit orders outside contract → cancelled
    - Plan/trigger orders violating rules → cancelled before trigger
-   - Filled positions breaching drawdown → liquidated via market sell
+   - Filled positions breaching drawdown → closed via `futures_place_order` (tradeSide:close)
 5. **Decision trace** — structured forensic record per observation. What was seen, which rule applied, what happened.
 6. **Alerts** — Telegram notification within seconds of any violation or enforcement action.
 
@@ -44,7 +44,7 @@ ZenithPulse fills this gap with six components:
 
 **What separates this from a monitoring dashboard:**
 - It has a **behavioral contract** derived from backtest — not arbitrary thresholds
-- It **acts** — cancels orders, liquidates positions (in enforce mode)
+- It **acts** — cancels futures orders, closes positions (in enforce mode)
 - Every observation has a **structured decision trace** — auditable, explainable
 - **Risk scoring** is continuous and composite, not binary pass/fail
 - Three modes give the developer control: enforce / observe / silent
@@ -82,10 +82,10 @@ ZenithPulse fills this gap with six components:
 
 **Acceptance:** When a limit order is placed outside the allowed symbol set or exceeds sizing limits from the contract, ZenithPulse cancels it within 30 seconds. Cancellation logged with decision trace.
 
-### US-4: Position breach liquidation
-> As a developer whose Playbook has breached its drawdown contract, I want ZenithPulse to liquidate the breaching position so that losses are capped.
+### US-4: Position breach close
+> As a developer whose Playbook has breached its drawdown contract, I want ZenithPulse to close the breaching position so that losses are capped.
 
-**Acceptance:** When live drawdown exceeds the backtest `max_drawdown_pct` threshold from the behavioral contract, ZenithPulse places a market sell to exit. Action logged, Telegram alert fired.
+**Acceptance:** When live drawdown exceeds the backtest `max_drawdown_pct` threshold from the behavioral contract, ZenithPulse closes the position via `futures_place_order` (tradeSide:close). Action logged, Telegram alert fired.
 
 ### US-5: Instant alerts
 > As a developer away from my dashboard, I want Telegram alerts the moment drift is detected or enforcement fires so that I know my system is watching and protecting my capital.
@@ -95,7 +95,7 @@ ZenithPulse fills this gap with six components:
 ### US-6: Full decision trace
 > As a developer reviewing runtime history, I want to see every decision ZenithPulse made — what it observed, which contract rule applied, what action it took.
 
-**Acceptance:** Every observation stored with: timestamp, live state snapshot, applicable contract rule, result (pass/warn/violation), action taken (none/cancel/liquidate), reasoning string.
+**Acceptance:** Every observation stored with: timestamp, live state snapshot, applicable contract rule, result (pass/warn/violation), action taken (none/cancel_order/cancel_plan_order/close_position), reasoning string.
 
 ### US-7: Mode control
 > As a developer, I want to choose how aggressively ZenithPulse acts — full enforcement, observe-only, or silent logging — so that I can tune it for my risk tolerance.
@@ -114,7 +114,7 @@ ZenithPulse fills this gap with six components:
 | `max_drawdown_pct` | Drawdown ceiling — breach triggers enforcement or alert |
 | `sharpe_ratio` | Performance floor — degradation below threshold raises risk score |
 | `margin_budget` (manifest) | Position size cap — exposure exceeding this is a violation |
-| `execution_mode` | If `signal_only`, any direct trade is a violation |
+| `execution_mode` | If `signal_only`, enforcement is disabled — observability and risk scoring remain active. If `follow_trade`, full enforcement available. |
 | `total_return_pct` + `total_trades` | Expected return profile — significant underperformance raises risk score |
 
 Contract re-derives on startup and on configurable interval (default: every 5 minutes).
@@ -155,9 +155,9 @@ Max-of picks the worst dimension — a single severe violation immediately surfa
 
 | Violation type | Detection method | Enforcement action |
 |---|---|---|
-| Asset drift | Open order or position in symbol not in `trading_symbols` | Cancel order / liquidate position |
-| Position oversize | Notional exposure > `margin_budget` × multiplier | Cancel order / partial liquidate |
-| Drawdown breach | Current drawdown > `max_drawdown_pct` | Liquidate via market sell |
+| Asset drift | Open order or position in symbol not in `trading_symbols` | Cancel order / close position |
+| Position oversize | Notional exposure > `margin_budget` × multiplier | Cancel order / partial close |
+| Drawdown breach | Current drawdown > `max_drawdown_pct` | Close position via `futures_place_order` (tradeSide:close) |
 | Unauthorized trade | Trade detected when `execution_mode` = `signal_only` | Cancel if open; alert if filled |
 | Trigger order violation | Plan order targets unauthorized asset or size | Cancel plan order |
 
@@ -178,7 +178,7 @@ SQLite database storing every observation as a structured decision trace:
 - Full state snapshot at time of observation
 - Contract rule evaluated (with origin: which backtest field derived it)
 - Result: `pass` / `warn` / `violation`
-- Action taken: `none` / `cancel` / `liquidate`
+- Action taken: `none` / `cancel_order` / `cancel_plan_order` / `close_position`
 - Action result: `success` / `failed` with reason
 - Reasoning string: human-readable explanation of what was seen and why
 - Queryable by Playbook, time range, result type, action type
@@ -202,11 +202,17 @@ SQLite database storing every observation as a structured decision trace:
 
 | Mode | Detection | Alerting | Enforcement |
 |---|---|---|---|
-| `enforce` | Active | Active | Active — cancels orders, liquidates positions |
+| `enforce` | Active | Active | Active — cancels orders, closes positions |
 | `observe` | Active | Active | Disabled — alerts only, no action |
 | `silent` | Active | Disabled | Disabled — logs only |
 
 Switchable per-Playbook at runtime.
+
+---
+
+### FR-9: SKILL.md (Agent Discovery)
+
+Hono serves a static `GET /skill.md` route — machine-readable Markdown describing what ZenithPulse does, the MCP tool list, REST API examples with curl, CLI quick start, and auth setup. No auth required. Coding agents load this URL to understand how to integrate without reading docs.
 
 ---
 
@@ -230,15 +236,14 @@ Switchable per-Playbook at runtime.
 | Bitget Product | Integration | Data Flow |
 |---|---|---|
 | `getagent-skill` | HTTP API (`/api/v1/playbook/list`, `/run`) | → Backtest metrics for contract derivation |
-| `bgc` / `bitget-core` | REST API (spot market, account, trade endpoints) | ↔ Live state reads + enforcement writes (cancel, sell) |
+| `bgc` / `bitget-core` | REST API (futures mix endpoints) | ↔ Live state reads + enforcement writes (cancel orders, close positions) |
 | GetClaw | Narrative complement | GetClaw delivers trading signals; ZenithPulse monitors drift and enforces contracts |
 
-**Write operations used:**
-- `POST /api/v2/spot/trade/cancel-order` — cancel single order
-- `POST /api/v2/spot/trade/batch-cancel-order` — cancel multiple
-- `POST /api/v2/spot/trade/cancel-symbol-order` — cancel all for symbol
-- `POST /api/v2/spot/trade/cancel-plan-order` — cancel trigger order
-- `POST /api/v2/spot/trade/place-order` — market sell to liquidate position
+**Write operations (futures mix endpoints):**
+- `futures_cancel_orders` → `/api/v2/mix/order/cancel-order` — cancel single futures order
+- `futures_cancel_orders` (batch) → `/api/v2/mix/order/batch-cancel-orders` — cancel multiple
+- `futures_cancel_orders` (cancelAll) → `/api/v2/mix/order/cancel-all-orders` — cancel all for product type
+- `futures_place_order` (tradeSide: close) → `/api/v2/mix/order/place-order` — close a futures position
 
 ---
 
@@ -246,8 +251,8 @@ Switchable per-Playbook at runtime.
 
 1. **Setup (30s):** Show a Playbook deployed via `getagent-skill` with visible backtest metrics. Start ZenithPulse — watch it derive the behavioral contract automatically. Dashboard shows: allowed symbols, drawdown cap, sizing limits. Zero config.
 2. **Green state (30s):** Observer loop running. Dashboard streams live state. All checks passing. Green health scores across the board.
-3. **Enforcement — Order Cancel (45s):** From terminal, run `bgc --paper-trading spot spot_place_order --orders '[{"symbol":"ETHUSDT","side":"buy","orderType":"limit","price":"2000","size":"0.1"}]'` — behavioral contract only allows BTCUSDT. ZenithPulse detects the asset drift within one polling cycle (~15s). Order cancelled via API. Dashboard shows enforcement action with decision trace. Telegram alert fires.
-4. **Enforcement — Drawdown Liquidation (45s):** Simulate drawdown crossing threshold. ZenithPulse detects breach. Market sell fires to liquidate. Position closed. Risk score flips red. Second Telegram alert.
+3. **Enforcement — Order Cancel (45s):** From terminal, run `bgc --paper-trading mix futures_place_order --orders '[{"symbol":"ETHUSDT","marginCoin":"USDT","side":"buy","orderType":"limit","price":"2000","size":"0.1","productType":"USDT-FUTURES"}]'` — behavioral contract only allows BTCUSDT. ZenithPulse detects the asset drift within one polling cycle (~15s). Order cancelled via `futures_cancel_orders` API. Dashboard shows enforcement action with decision trace. Telegram alert fires.
+4. **Enforcement — Drawdown Close (45s):** Simulate drawdown crossing threshold. ZenithPulse detects breach. Close-position order fires (`futures_place_order` tradeSide:close). Position closed. Risk score flips red. Second Telegram alert.
 5. **Decision Trace (30s):** Open audit log. Show full decision traces: what was observed, which contract rule (derived from backtest), what action was taken, reasoning.
 
 ---
@@ -259,9 +264,11 @@ Switchable per-Playbook at runtime.
 | Bitget product integrations | 3 (bgc, getagent-skill, GetClaw narrative) |
 | Time from install to live | < 5 minutes, zero config |
 | Demo covers full loop | Derive contract → detect drift → score risk → enforce → trace → alert |
-| Enforcement actions work | Cancel + liquidate demonstrated live |
-| Code is integratable | README, `npm install zenithpulse`, other developers can adopt |
+| Enforcement actions work | Cancel + close-position demonstrated live |
+| Code is integratable | README + SKILL.md + MCP config snippet — copy one block, agent handles the rest |
 | Verifiable usage evidence | Decision trace log with real observations and enforcement actions |
+| MCP tools callable | All 5 tools respond correctly via stdio MCP session |
+| SKILL.md served | `GET /skill.md` returns agent-readable integration guide, no auth required |
 
 ---
 
@@ -278,7 +285,7 @@ Switchable per-Playbook at runtime.
 - Derives rules automatically from backtest output
 - Continuously compares live execution against those rules
 - Scores risk as a composite signal across multiple dimensions
-- Acts on violations (cancel, liquidate) without human intervention
+- Acts on violations (cancel orders, close positions) without human intervention
 - Produces a structured decision trace per observation
 
 ZenithPulse is additive — it consumes Bitget's existing APIs and adds the behavioral contract + drift + enforcement + trace layer on top.
@@ -295,6 +302,7 @@ ZenithPulse is additive — it consumes Bitget's existing APIs and adds the beha
 - Dashboard authentication (single-user local)
 - Sub-account isolation
 - Backtesting the enforcer itself
+- Outbound webhook delivery (POST to external receivers)
 
 ---
 
@@ -302,7 +310,8 @@ ZenithPulse is additive — it consumes Bitget's existing APIs and adds the beha
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Playbook API key not received in time | Cannot derive behavioral contract from real backtest data | Mock the API response for demo; wire real key when available |
+| Playbook API key not received in time | Cannot derive behavioral contract from real backtest data | ~~Resolved — key obtained: `1f0c81c9dc08440f8ee46b22efc3e408`~~ |
+| `margin_budget` not in list API response | Contract derivation uses default | Read from `PLAYBOOK_MARGIN_BUDGET` env var. Logged at startup if missing. |
 | API key lacks Trade permission | Enforcement writes fail | Verify key permissions early; demo in paper-trading mode |
 | Rate limiting on frequent polling | Observer gets throttled | Adaptive backoff; batch reads; stay under 10 req/s |
 | False positive enforcement | Cancels legitimate orders | Default to `observe` mode; require explicit opt-in to `enforce`; decision trace explains every action |
