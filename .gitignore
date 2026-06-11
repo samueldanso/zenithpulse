@@ -22,7 +22,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Runtime
+# Runtime data
+data/
+*.db
+*.db-shm
+*.db-wal
 .DS_Store
 *.pem
 Thumbs.db
