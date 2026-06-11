@@ -1,0 +1,19 @@
+{
+	"name": "zenithpulse",
+	"private": true,
+	"workspaces": ["packages/*"],
+	"scripts": {
+		"dev": "bun run --filter '@zenithpulse/*' dev",
+		"build": "bun run --filter '@zenithpulse/*' build",
+		"lint": "biome lint .",
+		"format": "biome format --write .",
+		"check": "biome check .",
+		"test": "vitest run",
+		"typecheck": "bun run --filter '@zenithpulse/*' typecheck"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"typescript": "^5.7.0",
+		"vitest": "^3.0.0"
+	}
+}

@@ -1,0 +1,27 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(bun *)",
+			"Bash(git add *)",
+			"Bash(git commit *)",
+			"Bash(git status)",
+			"Bash(git log *)",
+			"Bash(git diff *)",
+			"Bash(git branch *)",
+			"Bash(git checkout *)",
+			"Bash(sqlite3 *)",
+			"Bash(curl *)",
+			"Bash(cat *)",
+			"Bash(ls *)",
+			"Bash(find *)",
+			"Bash(mkdir *)",
+			"Bash(cp *)",
+			"Bash(mv *)",
+			"Bash(touch *)",
+			"Read",
+			"Write",
+			"Edit"
+		],
+		"deny": ["Bash(git push *)", "Bash(git force*)", "Bash(rm -rf /)", "Bash(rm -rf ~*)"]
+	}
+}
