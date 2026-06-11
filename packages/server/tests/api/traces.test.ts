@@ -46,7 +46,7 @@ describe("trace routes", () => {
 		vi.clearAllMocks();
 		mockGet.mockReturnValue({ value: 1 });
 
-		const { createTraceRoutes } = await import("../../src/api/routes/traces.js");
+		const { createTraceRoutes } = await import("../../src/api/traces.js");
 		// biome-ignore lint/suspicious/noExplicitAny: test mock
 		app = new Hono().route("/api/traces", createTraceRoutes(mockDb as any));
 	});

@@ -1,8 +1,8 @@
 import { and, count, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import type { getDb } from "../../db/client.js";
-import * as schema from "../../db/schema.js";
-import { getTrace, listTraces } from "../../trace/store.js";
+import type { getDb } from "../db/client.js";
+import * as schema from "../db/schema.js";
+import { getTrace, listTraces } from "../trace/store.js";
 
 type Db = ReturnType<typeof getDb>;
 

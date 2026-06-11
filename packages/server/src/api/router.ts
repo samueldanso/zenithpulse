@@ -4,9 +4,9 @@ import { cors } from "hono/cors";
 import type { getDb } from "../db/client.js";
 import * as schema from "../db/schema.js";
 import { lastCycleAt, observerRunning } from "../observer/loop.js";
-import { createEventRoutes } from "./routes/events.js";
-import { createPlaybookRoutes } from "./routes/playbooks.js";
-import { createTraceRoutes } from "./routes/traces.js";
+import { createEventRoutes } from "./events.js";
+import { createPlaybookRoutes } from "./playbooks.js";
+import { createTraceRoutes } from "./traces.js";
 
 type Db = ReturnType<typeof getDb>;
 

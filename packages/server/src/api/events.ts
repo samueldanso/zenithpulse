@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { eventBus } from "../emitter.js";
+import { eventBus } from "./emitter.js";
 
 export function createEventRoutes() {
 	const app = new Hono();

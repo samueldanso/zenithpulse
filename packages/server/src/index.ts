@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { createRoutes } from "./api/routes.js";
+import { createRoutes } from "./api/router.js";
 import { createBitgetClient } from "./bitget/client.js";
 import { createPlaybookClient } from "./bitget/playbook-api.js";
 import { loadConfig } from "./config.js";

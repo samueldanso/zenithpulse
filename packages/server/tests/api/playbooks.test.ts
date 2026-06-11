@@ -30,7 +30,7 @@ describe("playbook routes", () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
 
-		const { createPlaybookRoutes } = await import("../../src/api/routes/playbooks.js");
+		const { createPlaybookRoutes } = await import("../../src/api/playbooks.js");
 		app = new Hono().route(
 			"/api/playbooks",
 			// biome-ignore lint/suspicious/noExplicitAny: vitest mock cannot satisfy full Drizzle type

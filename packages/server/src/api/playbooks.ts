@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { getDb } from "../../db/client.js";
-import * as schema from "../../db/schema.js";
+import type { getDb } from "../db/client.js";
+import * as schema from "../db/schema.js";
 
 type Db = ReturnType<typeof getDb>;
 
