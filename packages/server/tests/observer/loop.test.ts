@@ -79,6 +79,10 @@ vi.mock("../../src/db/queries.js", () => ({
 	updatePlaybookRiskState: vi.fn(),
 }));
 
+vi.mock("../../src/trace/store.js", () => ({
+	saveTrace: vi.fn(),
+}));
+
 function createMockConfig(overrides?: Partial<AppConfig>): AppConfig {
 	return {
 		BITGET_API_KEY: "test",
@@ -177,7 +181,7 @@ describe("ObserverLoop", () => {
 		expect(cycleLogs.length).toBeGreaterThanOrEqual(1);
 	});
 
-	it("logs stub phases during cycle", async () => {
+	it("logs trace and alert phases during cycle", async () => {
 		const { start, stop } = await import("../../src/observer/loop.js");
 		stopFn = stop;
 
@@ -191,9 +195,14 @@ describe("ObserverLoop", () => {
 		await new Promise((r) => setTimeout(r, 200));
 		stop();
 
-		const stubLogs = logSpy.mock.calls.filter(
+		const traceLogs = logSpy.mock.calls.filter(
+			(call) => typeof call[0] === "string" && call[0].includes("[trace]"),
+		);
+		expect(traceLogs.length).toBeGreaterThanOrEqual(1);
+
+		const alertLogs = logSpy.mock.calls.filter(
 			(call) => typeof call[0] === "string" && call[0].includes("stub:"),
 		);
-		expect(stubLogs.length).toBeGreaterThanOrEqual(1);
+		expect(alertLogs.length).toBeGreaterThanOrEqual(1);
 	});
 });

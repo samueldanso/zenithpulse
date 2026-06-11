@@ -18,6 +18,8 @@ import { computeRiskScore, getRiskState } from "../drift/score.js";
 import { executeEnforcement } from "../enforce/actions.js";
 import { decideEnforcement } from "../enforce/engine.js";
 import type { ActionResult } from "../enforce/types.js";
+import { buildTrace } from "../trace/record.js";
+import { saveTrace } from "../trace/store.js";
 import { pollLiveState } from "./poller.js";
 
 type Db = ReturnType<typeof getDb>;
@@ -122,13 +124,27 @@ async function runCycle(db: Db, bitgetClient: BitgetClient, config: AppConfig): 
 				}
 			}
 
+			const cycleId = crypto.randomUUID();
 			const actionResults = await runEnforcement(
 				config.MODE_DEFAULT,
 				driftResults,
 				liveState,
 				bitgetClient,
 			);
-			stubTrace(pb.id, liveState, contract, driftResults, riskScore, actionResults);
+
+			const trace = buildTrace({
+				playbookId: pb.id,
+				cycleId,
+				liveState,
+				contract,
+				driftResults,
+				riskScore,
+				riskState,
+				actionResults,
+			});
+			saveTrace(db, trace);
+			console.log(`[trace] saved trace ${trace.id} — ${trace.reasoning.slice(0, 80)}`);
+
 			stubAlert(config.MODE_DEFAULT, driftResults);
 		}
 	} catch (err) {
@@ -182,17 +198,6 @@ async function runEnforcement(
 		console.error("[enforce] Unexpected error:", err);
 		return [];
 	}
-}
-
-function stubTrace(
-	_playbookId: string,
-	_state: LiveState,
-	_contract: BehavioralContract,
-	_driftResults: DriftResult[],
-	_riskScore: number,
-	_actionResults: ActionResult[],
-): void {
-	console.log("  stub: trace called");
 }
 
 function stubAlert(_mode: string, _driftResults: DriftResult[]): void {
