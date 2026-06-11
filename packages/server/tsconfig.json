@@ -1,9 +1,9 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"strict": true,
-		"jsx": "react-jsx",
-		"jsxImportSource": "hono/jsx",
 		"types": ["@types/bun"],
-		"skipLibCheck": true
-	}
+		"jsx": "react-jsx",
+		"jsxImportSource": "hono/jsx"
+	},
+	"include": ["src/**/*.ts", "tests/**/*.ts"]
 }
