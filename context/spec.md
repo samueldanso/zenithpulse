@@ -23,6 +23,8 @@ Build an autonomous runtime that derives behavioral contracts from Bitget Playbo
 | Validation | Zod | ^3 |
 | Styling | Tailwind CSS v4 + shadcn/ui | latest |
 | Monorepo | Bun workspaces | native |
+| MCP server | `@modelcontextprotocol/sdk` | ^1 |
+| CLI | `citty` | ^0.1 |
 
 ---
 
@@ -46,6 +48,88 @@ bun run --filter @zenithpulse/server test      # server tests only
 # Dashboard (@zenithpulse/dashboard)
 bun run --filter @zenithpulse/dashboard dev    # start Next.js (port 3000)
 bun run --filter @zenithpulse/dashboard build  # production build
+
+# CLI (@zenithpulse/cli)
+bunx zenithpulse start             # start runtime (server + dashboard)
+bunx zenithpulse start --mcp       # start runtime + expose MCP server on stdio
+bunx zenithpulse status            # show runtime health + active playbooks
+```
+
+---
+
+## Integration Surface
+
+This is how developers and agents integrate with ZenithPulse. The dashboard is a dev console — not the product. The product is the runtime and these integration surfaces.
+
+### REST API + API Key
+
+ZenithPulse server exposes a REST API on `:3001`. Secured with a bearer token (`ZENITHPULSE_API_KEY`). Any service, script, or agent can call it:
+
+```bash
+# Register a playbook for monitoring
+curl -X POST http://localhost:3001/api/playbooks \
+  -H "Authorization: Bearer $ZENITHPULSE_API_KEY" \
+  -d '{"playbookId": "btc-ema-cross"}'
+
+# Get current risk score
+curl http://localhost:3001/api/playbooks/btc-ema-cross \
+  -H "Authorization: Bearer $ZENITHPULSE_API_KEY"
+
+# Subscribe to live events
+curl -N http://localhost:3001/api/events \
+  -H "Authorization: Bearer $ZENITHPULSE_API_KEY"
+```
+
+### MCP Server
+
+ZenithPulse exposes an MCP server. Any agent platform that supports MCP can call ZenithPulse tools directly — no REST client, no SDK.
+
+**Start:**
+```bash
+bunx zenithpulse start --mcp
+```
+
+Or add to your MCP client config (Claude, cursor, etc.):
+```json
+{
+  "mcpServers": {
+    "zenithpulse": {
+      "command": "bunx",
+      "args": ["zenithpulse", "start", "--mcp"],
+      "env": { "ZENITHPULSE_API_KEY": "..." }
+    }
+  }
+}
+```
+
+**Tools exposed:**
+
+| Tool | Description |
+|---|---|
+| `get_risk_score` | Get current risk score + state for a Playbook |
+| `get_contract` | Get the derived behavioral contract |
+| `list_traces` | Query decision trace history |
+| `set_mode` | Switch operating mode (observe/enforce/silent) |
+| `get_health` | Runtime health + active playbook count |
+
+### CLI
+
+```bash
+bunx zenithpulse start             # start server + dashboard
+bunx zenithpulse start --mcp       # also expose MCP server on stdio
+bunx zenithpulse status            # show runtime health
+```
+
+### Webhooks
+
+ZenithPulse POSTs to your endpoint when enforcement fires or risk state changes. Set `WEBHOOK_URL` in env. Payload is a `DecisionTrace` JSON object. Retry 3× on failure.
+
+```bash
+# Your endpoint receives:
+POST https://your-app.com/hooks/zenithpulse
+Content-Type: application/json
+X-ZenithPulse-Event: enforcement_action | risk_state_change
+{ ...DecisionTrace }
 ```
 
 ---
@@ -59,89 +143,97 @@ zenithpulse/
 ├── tsconfig.json                # base tsconfig
 ├── .env                         # API keys (gitignored)
 ├── .env.example                 # template without secrets
-├── context/                     # locked planning docs (brief, prd, spec, spike-findings, hackathon rules)
+├── context/                     # locked planning docs
 ├── tasks/                       # active build artifacts (plan.md, tasks.md)
 │
 ├── packages/
 │   ├── server/                  # @zenithpulse/server
-│   │   ├── package.json
-│   │   ├── tsconfig.json
 │   │   ├── src/
-│   │   │   ├── index.ts                 # Hono app entry + server start
-│   │   │   ├── config.ts               # env loading, defaults
+│   │   │   ├── index.ts
+│   │   │   ├── config.ts
+│   │   │   ├── middleware/
+│   │   │   │   └── auth.ts              # bearer token validation
 │   │   │   ├── contract/
-│   │   │   │   ├── derive.ts           # backtest → behavioral contract
-│   │   │   │   └── schema.ts           # Zod schemas for contract shape
+│   │   │   │   ├── derive.ts
+│   │   │   │   └── schema.ts
 │   │   │   ├── observer/
-│   │   │   │   ├── loop.ts             # polling loop orchestrator
-│   │   │   │   ├── poller.ts           # bitget-core API calls
-│   │   │   │   └── state.ts            # live state snapshot type
+│   │   │   │   ├── loop.ts
+│   │   │   │   ├── poller.ts
+│   │   │   │   └── state.ts
 │   │   │   ├── drift/
-│   │   │   │   ├── detect.ts           # compare live state vs contract
-│   │   │   │   ├── score.ts            # risk score computation
-│   │   │   │   └── types.ts            # drift result types
+│   │   │   │   ├── detect.ts
+│   │   │   │   ├── score.ts
+│   │   │   │   └── types.ts
 │   │   │   ├── enforce/
-│   │   │   │   ├── engine.ts           # enforcement decision logic
-│   │   │   │   ├── actions.ts          # cancel/liquidate API calls
-│   │   │   │   └── types.ts            # enforcement result types
+│   │   │   │   ├── engine.ts
+│   │   │   │   ├── actions.ts
+│   │   │   │   └── types.ts
 │   │   │   ├── trace/
-│   │   │   │   ├── record.ts           # build decision trace per cycle
-│   │   │   │   └── types.ts            # trace schema
+│   │   │   │   ├── record.ts
+│   │   │   │   └── types.ts
 │   │   │   ├── alerts/
-│   │   │   │   ├── telegram.ts         # grammy bot + message formatting
-│   │   │   │   └── types.ts            # alert payload types
+│   │   │   │   ├── telegram.ts
+│   │   │   │   ├── webhooks.ts          # outbound webhook delivery
+│   │   │   │   └── types.ts
+│   │   │   ├── mcp/
+│   │   │   │   ├── server.ts            # MCP server setup
+│   │   │   │   └── tools.ts             # tool definitions + handlers
 │   │   │   ├── db/
-│   │   │   │   ├── schema.ts           # Drizzle table definitions
-│   │   │   │   ├── migrate.ts          # auto-migration on startup
-│   │   │   │   └── client.ts           # db connection singleton
+│   │   │   │   ├── schema.ts
+│   │   │   │   ├── migrate.ts
+│   │   │   │   └── client.ts
 │   │   │   ├── api/
-│   │   │   │   ├── routes.ts           # Hono route registration
-│   │   │   │   ├── playbooks.ts        # GET /playbooks, GET /playbooks/:id
-│   │   │   │   ├── traces.ts           # GET /traces
-│   │   │   │   ├── events.ts           # GET /events (SSE stream)
-│   │   │   │   └── modes.ts            # PATCH /playbooks/:id/mode
+│   │   │   │   ├── routes.ts
+│   │   │   │   ├── playbooks.ts
+│   │   │   │   ├── traces.ts
+│   │   │   │   ├── events.ts
+│   │   │   │   └── modes.ts
 │   │   │   └── bitget/
-│   │   │       ├── client.ts           # bitget-core wrapper (typed)
-│   │   │       └── playbook-api.ts     # getagent-skill HTTP client
+│   │   │       ├── client.ts
+│   │   │       └── playbook-api.ts
 │   │   └── tests/
 │   │       ├── contract/
 │   │       ├── drift/
 │   │       ├── enforce/
-│   │       └── trace/
+│   │       ├── trace/
+│   │       └── mcp/
 │   │
-│   ├── dashboard/               # @zenithpulse/dashboard
+│   ├── cli/                     # @zenithpulse/cli
 │   │   ├── package.json
 │   │   ├── tsconfig.json
-│   │   ├── next.config.ts
-│   │   ├── tailwind.config.ts
-│   │   ├── src/
-│   │   │   ├── app/
-│   │   │   │   ├── layout.tsx
-│   │   │   │   ├── page.tsx             # portfolio overview
-│   │   │   │   ├── playbooks/
-│   │   │   │   │   └── [id]/page.tsx    # per-Playbook detail
-│   │   │   │   └── traces/page.tsx      # decision trace feed
-│   │   │   ├── components/
-│   │   │   │   ├── risk-score.tsx       # score gauge/indicator
-│   │   │   │   ├── contract-view.tsx    # derived rules display
-│   │   │   │   ├── trace-feed.tsx       # decision trace list
-│   │   │   │   ├── mode-switcher.tsx    # enforce/observe/silent toggle
-│   │   │   │   └── alert-badge.tsx      # violation severity badge
-│   │   │   ├── lib/
-│   │   │   │   ├── api.ts              # fetch wrapper for server API
-│   │   │   │   └── sse.ts             # SSE hook for real-time updates
-│   │   │   └── hooks/
-│   │   │       └── use-playbooks.ts    # TanStack Query hooks
-│   │   └── public/
+│   │   └── src/
+│   │       ├── index.ts         # citty CLI entry point
+│   │       ├── commands/
+│   │       │   ├── start.ts     # start runtime (+ --mcp flag)
+│   │       │   └── status.ts    # health check
+│   │       └── bin.ts           # bin entry: #!/usr/bin/env bun
+│   │
+│   ├── dashboard/               # @zenithpulse/dashboard
+│   │   └── src/
+│   │       ├── app/
+│   │       │   ├── layout.tsx
+│   │       │   ├── page.tsx
+│   │       │   ├── playbooks/[id]/page.tsx
+│   │       │   └── traces/page.tsx
+│   │       ├── components/
+│   │       │   ├── risk-score.tsx
+│   │       │   ├── contract-view.tsx
+│   │       │   ├── trace-feed.tsx
+│   │       │   ├── mode-switcher.tsx
+│   │       │   └── alert-badge.tsx
+│   │       ├── lib/
+│   │       │   ├── api.ts
+│   │       │   └── sse.ts
+│   │       └── hooks/
+│   │           └── use-playbooks.ts
 │   │
 │   └── shared/                  # @zenithpulse/shared
-│       ├── package.json
 │       └── src/
-│           ├── types.ts                 # shared types (Playbook, Contract, Trace)
-│           └── constants.ts             # shared constants (modes, risk thresholds)
+│           ├── types.ts
+│           └── constants.ts
 │
 └── .resources/
-    └── agent_hub/               # Bitget Agent Hub source (reference, not built)
+    └── agent_hub/               # Bitget Agent Hub source (reference)
 ```
 
 ---
@@ -425,16 +517,19 @@ CREATE INDEX idx_traces_action ON traces(enforcement_action) WHERE enforcement_a
 ## Environment Variables
 
 ```bash
+# Required — ZenithPulse API
+ZENITHPULSE_API_KEY=              # Bearer token for REST API + MCP auth
+
 # Required — Bitget Trading API
-BITGET_API_KEY=                   # Live or Demo API key
-BITGET_SECRET_KEY=                # Corresponding secret
+BITGET_API_KEY=***                # Live or Demo API key
+BITGET_SECRET_KEY=***             # Corresponding secret
 BITGET_PASSPHRASE=                # API passphrase
 
 # Required — Playbook API (when key received)
 PLAYBOOK_ACCESS_KEY=              # getagent-skill ACCESS-KEY
 
 # Required — Telegram
-TELEGRAM_BOT_TOKEN=               # Bot API token from @BotFather
+TELEGRAM_BOT_TOKEN=***            # Bot API token from @BotFather
 TELEGRAM_CHAT_ID=                 # Target chat for alerts
 
 # Optional — Configuration
@@ -442,7 +537,8 @@ POLL_INTERVAL_MS=15000            # Observer loop interval (default: 15000)
 MODE_DEFAULT=observe              # Default operating mode (default: observe)
 PAPER_TRADING=false               # Use Bitget demo environment (default: false)
 PORT=3001                         # Server port (default: 3001)
-DB_PATH=./data/zenithpulse.db    # SQLite file path
+DB_PATH=./data/zenithpulse.db     # SQLite file path
+WEBHOOK_URL=                      # Outbound webhook endpoint (optional)
 ```
 
 ---
@@ -484,9 +580,13 @@ DB_PATH=./data/zenithpulse.db    # SQLite file path
 5. **Decision trace is complete:** Every observation cycle persists a trace with: state snapshot, contract, drift results, risk score, action (if any), reasoning.
 6. **Alerts fire:** Telegram message sent within 30s of detection in enforce/observe mode. Message includes playbook name, violation type, values.
 7. **Dashboard shows real-time state:** Portfolio view loads in < 2s. Updates within 15s of state change via SSE.
-8. **Mode switching works:** Changing mode from dashboard immediately affects next observation cycle.
-9. **Zero config:** No YAML, JSON, or rule files needed. Only env vars (API keys) + Playbook ID.
-10. **Demo scenario executable:** The 3-minute demo from PRD can be performed end-to-end in paper-trading mode.
+8. **Mode switching works:** Changing mode from dashboard or via API immediately affects next observation cycle.
+9. **REST API is authenticated:** All endpoints reject requests without a valid `Authorization: Bearer <ZENITHPULSE_API_KEY>` header.
+10. **MCP server works:** `bunx zenithpulse start --mcp` starts the runtime and exposes all 5 MCP tools. A client calling `get_risk_score` receives the current score.
+11. **CLI works:** `bunx zenithpulse start` starts server + dashboard. `bunx zenithpulse status` returns runtime health.
+12. **Webhooks fire:** When enforcement triggers, a POST with `DecisionTrace` payload is delivered to `WEBHOOK_URL` within 30s.
+13. **Zero config runtime:** Only env vars (API keys) + Playbook ID. No YAML, JSON, or rule files needed.
+14. **Demo scenario executable:** The 3-minute demo from PRD can be performed end-to-end in paper-trading mode.
 
 ---
 

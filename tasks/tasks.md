@@ -631,15 +631,134 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 ---
 
 ### Checkpoint: API
-- [ ] All REST endpoints respond correctly
+- [ ] All REST endpoints respond correctly with valid `Authorization` header
+- [ ] All REST endpoints reject requests without auth (401)
 - [ ] SSE streams live trace events
 - [ ] Mode switching works via API
 
 ---
 
-## Phase 7: Dashboard
+## Phase 7: Integration Surface
 
-### Task 25: Dashboard scaffold
+### Task 25: API authentication middleware
+
+**Description:** Hono middleware that validates `Authorization: Bearer <token>` on all `/api/*` routes. Token sourced from `ZENITHPULSE_API_KEY` env var.
+
+**Acceptance criteria:**
+- [ ] Valid token → request proceeds
+- [ ] Missing or wrong token → 401 `{ error: "unauthorized" }`
+- [ ] Health endpoint (`/api/health`) exempt from auth
+- [ ] Token comparison is constant-time (no timing attacks)
+
+**Verification:**
+- `curl /api/playbooks` without header → 401
+- `curl /api/playbooks -H "Authorization: Bearer $KEY"` → 200
+
+**Dependencies:** Task 22
+
+**Files:**
+- `packages/server/src/middleware/auth.ts`
+- `packages/server/src/api/routes.ts` (apply middleware)
+
+**Scope:** S
+
+---
+
+### Task 26: Webhook delivery
+
+**Description:** After each observer cycle, if enforcement fired or risk state changed, POST the `DecisionTrace` to `WEBHOOK_URL`. Retry 3× with exponential backoff. No-op if `WEBHOOK_URL` not set.
+
+**Acceptance criteria:**
+- [ ] POST fires on `enforcement_action != 'none'`
+- [ ] POST fires on risk state change (healthy → elevated, etc.)
+- [ ] Payload is full `DecisionTrace` JSON
+- [ ] Header `X-ZenithPulse-Event: enforcement_action | risk_state_change`
+- [ ] Retries 3× on non-2xx response
+- [ ] Silent no-op when `WEBHOOK_URL` not configured
+
+**Verification:**
+- Unit test: mock fetch → correct payload + headers
+- Integration: set `WEBHOOK_URL` to a local listener → trigger violation → POST received
+
+**Dependencies:** Task 19
+
+**Files:**
+- `packages/server/src/alerts/webhooks.ts`
+- `packages/server/src/observer/loop.ts` (wire webhook call)
+
+**Scope:** S
+
+---
+
+### Task 27: MCP server
+
+**Description:** Implement a Model Context Protocol server in `packages/server/src/mcp/` using `@modelcontextprotocol/sdk`. Expose 5 tools that proxy to the internal runtime state. MCP server starts on stdio when `--mcp` flag is passed to CLI.
+
+**Acceptance criteria:**
+- [ ] `get_risk_score(playbookId)` → returns `{ score, riskState, timestamp }`
+- [ ] `get_contract(playbookId)` → returns `BehavioralContract`
+- [ ] `list_traces({ playbookId, limit })` → returns `DecisionTrace[]`
+- [ ] `set_mode(playbookId, mode)` → updates mode, returns new mode
+- [ ] `get_health()` → returns `{ status, activePLaybooks, uptimeMs }`
+- [ ] All tools validate input with Zod
+- [ ] All tools return descriptive error if runtime not started
+
+**Verification:**
+- Unit test: each tool handler with mocked DB → correct output shape
+- Integration: start with `--mcp` → call `get_health` via MCP client → response received
+
+**Dependencies:** Task 22, Task 23
+
+**Files:**
+- `packages/server/src/mcp/server.ts`
+- `packages/server/src/mcp/tools.ts`
+- `packages/server/tests/mcp/tools.test.ts`
+
+**Scope:** M
+
+---
+
+### Task 28: CLI package
+
+**Description:** `@zenithpulse/cli` package using `citty`. Two commands: `start` (spawns server + dashboard, accepts `--mcp` flag to also start MCP server on stdio) and `status` (hits `/api/health` and prints formatted output). Published with a `bin` entry so `bunx zenithpulse` works.
+
+**Acceptance criteria:**
+- [ ] `bunx zenithpulse start` → server on :3001 + dashboard on :3000
+- [ ] `bunx zenithpulse start --mcp` → server + dashboard + MCP server on stdio
+- [ ] `bunx zenithpulse status` → prints runtime health (or "not running" if server unreachable)
+- [ ] `package.json` has `bin: { zenithpulse: "./src/bin.ts" }`
+- [ ] No crash if `ZENITHPULSE_API_KEY` not set (print warning, still start)
+
+**Verification:**
+- `bunx zenithpulse start` → curl :3001/api/health → ok
+- `bunx zenithpulse status` → formatted health output
+
+**Dependencies:** Task 3, Task 27
+
+**Files:**
+- `packages/cli/package.json`
+- `packages/cli/tsconfig.json`
+- `packages/cli/src/bin.ts`
+- `packages/cli/src/index.ts`
+- `packages/cli/src/commands/start.ts`
+- `packages/cli/src/commands/status.ts`
+
+**Scope:** M
+
+---
+
+### Checkpoint: Integration Surface
+- [ ] REST API rejects unauthenticated requests
+- [ ] Webhook fires on enforcement/risk state change
+- [ ] MCP server starts and all 5 tools respond correctly
+- [ ] `bunx zenithpulse start` boots the full runtime
+- [ ] `bunx zenithpulse status` returns health
+
+---
+
+## Phase 8: Dashboard
+
+### Task 29: Dashboard scaffold
 
 **Description:** Next.js 16 app with App Router, Tailwind v4, shadcn/ui. Layout with nav. Dev server runs on port 3000.
 
@@ -664,7 +783,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ---
 
-### Task 26: API client + SSE hook
+### Task 30: API client + SSE hook
 
 **Description:** Fetch wrapper for server API and React hook for SSE connection that updates state on events.
 
@@ -677,7 +796,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Verification:**
 - Dashboard fetches real data from running server
 
-**Dependencies:** Task 22, Task 24, Task 25
+**Dependencies:** Task 22, Task 24, Task 29
 
 **Files:**
 - `packages/dashboard/src/lib/api.ts`
@@ -688,7 +807,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ---
 
-### Task 27: Portfolio page (all Playbooks overview)
+### Task 31: Portfolio page (all Playbooks overview)
 
 **Description:** Home page showing all monitored Playbooks with risk score, risk state, mode, and last action. Real-time updates via SSE.
 
@@ -701,7 +820,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Verification:**
 - Open dashboard → see playbook with live risk score updating
 
-**Dependencies:** Task 26
+**Dependencies:** Task 30
 
 **Files:**
 - `packages/dashboard/src/app/page.tsx`
@@ -712,7 +831,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ---
 
-### Task 28: Playbook detail page
+### Task 32: Playbook detail page
 
 **Description:** Per-Playbook page showing: derived behavioral contract, current drift state, risk score, mode switcher, recent enforcement actions.
 
@@ -725,7 +844,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Verification:**
 - Navigate to playbook → see contract + mode switcher → switch mode → confirmed
 
-**Dependencies:** Task 26
+**Dependencies:** Task 30
 
 **Files:**
 - `packages/dashboard/src/app/playbooks/[id]/page.tsx`
@@ -736,7 +855,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ---
 
-### Task 29: Decision trace feed page
+### Task 33: Decision trace feed page
 
 **Description:** Chronological log of all observations with filtering. Shows reasoning, action taken, severity.
 
@@ -749,7 +868,7 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Verification:**
 - Open traces page → see trace log updating as observer runs
 
-**Dependencies:** Task 26
+**Dependencies:** Task 30
 
 **Files:**
 - `packages/dashboard/src/app/traces/page.tsx`
@@ -768,9 +887,9 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ---
 
-## Phase 8: Integration + Ship
+## Phase 9: Ship
 
-### Task 30: End-to-end demo flow
+### Task 34: End-to-end demo flow
 
 **Description:** Wire everything for the 3-minute demo scenario. Verify: start → derive contract → green state → trigger violation (bgc command) → enforcement fires → trace logged → alert sent → dashboard shows it.
 
@@ -791,20 +910,21 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ---
 
-### Task 31: README + packaging
+### Task 35: README + packaging
 
-**Description:** Write README with: what it is, quick start, env setup, demo instructions. Ensure `npm install zenithpulse` story is plausible (package.json metadata).
+**Description:** Write README with: what it is, integration surface (REST API, MCP, CLI, webhooks), quick start, env setup, demo instructions. Package.json metadata for `npm publish`.
 
 **Acceptance criteria:**
-- [ ] README explains the product in 2 paragraphs
-- [ ] Quick start: clone → bun install → configure .env → bun run dev → working
+- [ ] README opens with what ZenithPulse is (2 sentences)
+- [ ] Integration section: REST API example, MCP config snippet, CLI commands
+- [ ] Quick start: `bunx zenithpulse start` → working runtime in < 5 mins
 - [ ] Demo section matches PRD demo scenario
-- [ ] Package.json has correct name, description, repository fields
+- [ ] `package.json` root has `name`, `description`, `repository`, `keywords`
 
 **Verification:**
 - Fresh clone → follow README → system runs
 
-**Dependencies:** Task 30
+**Dependencies:** Task 34
 
 **Files:**
 - `README.md`
@@ -816,6 +936,8 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 ### Checkpoint: Ship-ready
 - [ ] Demo scenario works end-to-end
+- [ ] `bunx zenithpulse start` boots the full runtime
+- [ ] MCP tools callable from a real MCP client
 - [ ] README is complete and accurate
 - [ ] `bun run check && bun run test && bun run typecheck` all pass
 - [ ] No secrets in committed files
