@@ -3,21 +3,29 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "next dev --port 3000",
+		"dev": "bun --bun next dev",
 		"build": "next build",
+		"start": "next start",
+		"lint": "eslint",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@zenithpulse/shared": "workspace:*",
-		"@tanstack/react-query": "^5.62.0",
-		"next": "^15.1.0",
-		"react": "^19.0.0",
-		"react-dom": "^19.0.0"
+		"next": "16.2.9",
+		"react": "19.2.4",
+		"react-dom": "19.2.4",
+		"@tanstack/react-query": "^5.80.5",
+		"@zenithpulse/shared": "workspace:*"
 	},
 	"devDependencies": {
-		"@types/react": "^19.0.0",
-		"@types/react-dom": "^19.0.0",
-		"tailwindcss": "^4.0.0",
-		"typescript": "^5.7.0"
-	}
+		"@tailwindcss/postcss": "^4",
+		"@types/node": "^20",
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"eslint": "^9",
+		"eslint-config-next": "16.2.9",
+		"tailwindcss": "^4",
+		"typescript": "^5"
+	},
+	"ignoreScripts": ["sharp", "unrs-resolver"],
+	"trustedDependencies": ["sharp", "unrs-resolver"]
 }
