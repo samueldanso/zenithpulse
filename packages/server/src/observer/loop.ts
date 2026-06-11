@@ -1,4 +1,5 @@
 import type { BehavioralContract, LiveState } from "@zenithpulse/shared";
+import { eq } from "drizzle-orm";
 import type { BitgetClient } from "../bitget/client.js";
 import type { PlaybookClient } from "../bitget/playbook-api.js";
 import type { AppConfig } from "../config.js";
@@ -86,6 +87,11 @@ async function runCycle(db: Db, bitgetClient: BitgetClient, config: AppConfig): 
 
 		const playbooks = db.select().from(schema.playbooks).all();
 		for (const pb of playbooks) {
+			await db
+				.update(schema.playbooks)
+				.set({ lastObservedAt: new Date().toISOString() })
+				.where(eq(schema.playbooks.id, pb.id));
+
 			const contract = pb.contractJson ? (JSON.parse(pb.contractJson) as BehavioralContract) : null;
 			if (!contract) continue;
 

@@ -167,6 +167,7 @@ export function createBitgetClient(config: AppConfig) {
 					productType: "USDT-FUTURES",
 					marginMode: "crossed",
 					marginCoin: "USDT",
+					// "buy" for short close is correct futures semantics — tradeSide:"close" is the true intent
 					side: holdSide === "long" ? "sell" : "buy",
 					tradeSide: "close",
 					orderType: "market",

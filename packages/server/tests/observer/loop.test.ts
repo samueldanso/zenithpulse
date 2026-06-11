@@ -28,9 +28,14 @@ const mockWhere = vi.fn(() => ({ get: vi.fn(() => null) }));
 const mockSelectFrom = vi.fn(() => ({ where: mockWhere }));
 const mockSelectForLoad = vi.fn(() => ({ from: mockSelectFrom }));
 
+const mockUpdateWhere = vi.fn();
+const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
+const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
+
 const mockDb = {
 	select: mockDbSelect,
 	insert: mockInsert,
+	update: mockUpdate,
 };
 
 vi.mock("../../src/db/schema.js", () => ({
