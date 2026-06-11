@@ -129,11 +129,26 @@ npx bgc mix futures_get_positions --productType USDT-FUTURES
 npx bgc account get_account_assets
 ```
 
+## Deployment (Locked)
+
+This is a production infra product, not a local-only demo. Judges have 500 submissions and 1 week — they click URLs, they don't clone repos.
+
+- **Server + Observer** → Render (persistent disk at `/data` for SQLite, Bun runtime, always-on)
+- **Dashboard** → Vercel (Next.js, public URL judges can visit)
+- **Docker Compose** → self-hosted story (`docker compose up` → full stack)
+- **MCP server** → exposed from server, connects to deployed Render instance
+- **SKILL.md** → served at `GET /skill.md` on live Render URL (no auth)
+
+**Critical build constraints from this decision:**
+- Dashboard API client MUST use configurable `NEXT_PUBLIC_API_URL` env var (NOT hardcoded localhost)
+- Server must accept `0.0.0.0` binding (not just localhost)
+- SKILL.md and MCP config must reference the deployed URL
+- SQLite path via `DB_PATH` env var (Render mounts persistent disk at `/data`)
+
 ## Constraints
 
 - Perpetual futures only (USDT-margined). Spot deferred.
 - No manual policy config (contracts are derived from backtest automatically)
-- Single-user local dashboard (no auth for demo)
 - Enforcement is reactive — cannot intercept market orders (instant fill)
 - Never place buy orders — ZenithPulse only cancels orders or closes positions (tradeSide:close)
 - Default mode is `observe` — `enforce` requires explicit opt-in

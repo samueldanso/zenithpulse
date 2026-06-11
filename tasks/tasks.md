@@ -498,4 +498,433 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 
 **Dependencies:** Task 10, Task 17, Task 18
 
+**Files:**
+- `packages/server/src/observer/loop.ts` (replace trace stub)
+
+**Scope:** S
+
+---
+
+### Task 20: Telegram bot setup + alert logic
+
+**Description:** Set up grammy bot instance, alert formatting, and trigger logic. Alert fires on violations in enforce/observe mode (not silent).
+
+**Acceptance criteria:**
+- [ ] grammy bot connects and sends test message
+- [ ] Alert message includes: playbook name, drift rule, risk score, action taken
+- [ ] Alert fires on violation in enforce/observe mode
+- [ ] No alert in silent mode
+- [ ] Rate limiting: max 1 alert per playbook per 60s
+
+**Verification:**
+- Integration: trigger violation → Telegram message received
+
+**Dependencies:** Task 17
+
+**Files:**
+- `packages/server/src/alert/telegram.ts`
+- `packages/server/src/alert/trigger.ts`
+- `packages/server/tests/alert/trigger.test.ts`
+
+**Scope:** S
+
+---
+
+### Task 21: Wire alerts into observer loop
+
+**Description:** Replace alert stub. After trace, evaluate alert trigger conditions and send Telegram notification.
+
+**Acceptance criteria:**
+- [ ] Alerts fire after trace is persisted
+- [ ] Alert failure doesn't crash observer loop
+- [ ] Alert includes trace ID for cross-reference
+
+**Verification:**
+- Start server → trigger violation → Telegram alert with trace link
+
+**Dependencies:** Task 19, Task 20
+
+**Files:**
+- `packages/server/src/observer/loop.ts` (replace alert stub)
+
+**Scope:** S
+
+---
+
+### Checkpoint: Decision Trace + Alerts
+- [ ] Full cycle: poll → detect → score → enforce → trace → alert
+- [ ] All traces in SQLite with reasoning
+- [ ] Telegram alert received on violation
+
+---
+
+## Phase 6: API Layer
+
+### Task 22: Playbook REST routes
+
+**Description:** Hono routes for playbook CRUD — list all, get detail, switch mode.
+
+**Acceptance criteria:**
+- [ ] `GET /api/playbooks` → JSON array with risk state
+- [ ] `GET /api/playbooks/:id` → single playbook with contract
+- [ ] `PATCH /api/playbooks/:id/mode` → updates mode (validate against enum)
+- [ ] Error responses use consistent shape `{ error: string }`
+
+**Verification:**
+- curl all three endpoints → correct responses
+
+**Dependencies:** Task 4, Task 8
+
+**Files:**
+- `packages/server/src/api/routes/playbooks.ts`
+- `packages/server/tests/api/playbooks.test.ts`
+
+**Scope:** S
+
+---
+
+### Task 23: Trace REST routes
+
+**Description:** Routes for querying decision traces — list (paginated, filterable) and detail.
+
+**Acceptance criteria:**
+- [ ] `GET /api/traces?playbook_id=X&limit=50&offset=0` → paginated traces
+- [ ] `GET /api/traces/:id` → single trace with full detail
+- [ ] Filter by action type (none, cancel_order, close_position)
+- [ ] Returns total count for pagination
+
+**Verification:**
+- curl with filters → correct results
+
+**Dependencies:** Task 18
+
+**Files:**
+- `packages/server/src/api/routes/traces.ts`
+- `packages/server/tests/api/traces.test.ts`
+
+**Scope:** S
+
+---
+
+### Task 24: SSE event stream
+
+**Description:** Server-Sent Events endpoint for real-time dashboard updates. Emits cycle events (risk score, drift, enforcement).
+
+**Acceptance criteria:**
+- [ ] `GET /api/events` → SSE connection
+- [ ] Emits `cycle` event after each observer cycle (risk score, state, drift count)
+- [ ] Emits `enforcement` event when action fires
+- [ ] Connection heartbeat every 30s
+- [ ] Multiple clients supported
+
+**Verification:**
+- Connect via curl → receive events as cycles run
+
+**Dependencies:** Task 19
+
+**Files:**
+- `packages/server/src/api/routes/events.ts`
+- `packages/server/src/api/emitter.ts`
+
+**Scope:** S
+
+---
+
+### Task 25: Health + system info endpoint
+
+**Description:** Enhanced health endpoint with uptime, last cycle time, active playbook count, observer state.
+
+**Acceptance criteria:**
+- [ ] `GET /api/health` → `{ status, uptime, lastCycleAt, playbookCount, observerRunning }`
+- [ ] Returns 200 when observer running, 503 if not started
+
+**Verification:**
+- curl → matches server state
+
+**Dependencies:** Task 3
+
+**Files:**
+- `packages/server/src/api/routes/health.ts` (update existing)
+
+**Scope:** S
+
+---
+
+### Checkpoint: API Layer
+- [ ] All REST endpoints respond with correct data
+- [ ] SSE streams live cycle events
+- [ ] Mode switch persists and takes effect next cycle
+
+---
+
+## Phase 7: Dashboard
+
+### Task 26: Dashboard scaffold + API client
+
+**Description:** Next.js 16 app with Tailwind v4, shadcn/ui, configurable API_URL. API client using fetch + SSE hook.
+
+**Acceptance criteria:**
+- [ ] `bun run --filter @zenithpulse/dashboard dev` → renders on :3000
+- [ ] `NEXT_PUBLIC_API_URL` env var used for all API calls (NOT hardcoded)
+- [ ] SSE hook connects and receives events
+- [ ] Basic layout (header, sidebar placeholder)
+
+**Verification:**
+- Start dashboard → connects to server → no console errors
+
+**Dependencies:** Task 22, Task 24
+
+**Files:**
+- `packages/dashboard/src/lib/api.ts`
+- `packages/dashboard/src/hooks/use-events.ts`
+- `packages/dashboard/src/app/layout.tsx`
+- `packages/dashboard/src/app/page.tsx`
+
+**Scope:** M
+
+---
+
+### Task 27: Portfolio page (all playbooks)
+
+**Description:** Main page showing all monitored playbooks with live risk scores, modes, and aggregate status.
+
+**Acceptance criteria:**
+- [ ] Lists all playbooks with name, risk score, risk state badge, mode
+- [ ] Risk score updates via SSE (no page refresh)
+- [ ] Color-coded risk badges (green/yellow/red)
+- [ ] Click playbook → navigates to detail
+
+**Verification:**
+- Dashboard shows playbooks → risk updates live
+
+**Dependencies:** Task 26
+
+**Files:**
+- `packages/dashboard/src/app/page.tsx`
+- `packages/dashboard/src/components/playbook-card.tsx`
+- `packages/dashboard/src/components/risk-badge.tsx`
+
+**Scope:** S
+
+---
+
+### Task 28: Playbook detail page
+
+**Description:** Shows behavioral contract rules, current drift state, risk gauge, mode switcher, and recent traces.
+
+**Acceptance criteria:**
+- [ ] Displays contract rules (allowed assets, max drawdown, max exposure, min sharpe)
+- [ ] Shows current violations highlighted
+- [ ] Risk score gauge (visual)
+- [ ] Mode switcher (enforce/observe/silent) with API call
+- [ ] Recent traces list (last 10)
+
+**Verification:**
+- Navigate to playbook → all data renders → switch mode → persists
+
+**Dependencies:** Task 27
+
+**Files:**
+- `packages/dashboard/src/app/playbooks/[id]/page.tsx`
+- `packages/dashboard/src/components/risk-gauge.tsx`
+- `packages/dashboard/src/components/mode-switcher.tsx`
+- `packages/dashboard/src/components/contract-rules.tsx`
+
+**Scope:** M
+
+---
+
+### Task 29: Decision trace feed
+
+**Description:** Filterable feed of decision traces showing reasoning, actions, timestamps.
+
+**Acceptance criteria:**
+- [ ] Lists traces with timestamp, playbook, risk score, action, reasoning snippet
+- [ ] Filter by playbook, action type
+- [ ] Click → expand to full reasoning + state snapshot
+- [ ] New traces appear via SSE (no refresh)
+
+**Verification:**
+- Traces page → shows history → filter works → new trace appears live
+
+**Dependencies:** Task 26
+
+**Files:**
+- `packages/dashboard/src/app/traces/page.tsx`
+- `packages/dashboard/src/components/trace-item.tsx`
+
+**Scope:** M
+
+---
+
+### Checkpoint: Dashboard
+- [ ] Dashboard renders live data from server
+- [ ] Risk scores update without refresh
+- [ ] Mode switching works end-to-end
+- [ ] Trace feed shows enforcement actions
+
+---
+
+## Phase 8: MCP Server + SKILL.md
+
+### Task 30: MCP server (5 tools)
+
+**Description:** Model Context Protocol server exposing ZenithPulse tools for Claude/Cursor integration. Tools: list_playbooks, get_risk_state, get_traces, switch_mode, get_health.
+
+**Acceptance criteria:**
+- [ ] MCP server starts alongside Hono (same process)
+- [ ] 5 tools callable via MCP protocol
+- [ ] Tools return structured JSON (not prose)
+- [ ] Works with Claude Desktop / Cursor MCP config
+
+**Verification:**
+- Connect via MCP inspector → call each tool → correct response
+
+**Dependencies:** Task 22, Task 23, Task 25
+
+**Files:**
+- `packages/server/src/mcp/server.ts`
+- `packages/server/src/mcp/tools.ts`
+
+**Scope:** M
+
+---
+
+### Task 31: SKILL.md endpoint
+
+**Description:** Serve agent-readable skill manifest at `GET /skill.md`. Describes capabilities, available tools, and MCP connection config.
+
+**Acceptance criteria:**
+- [ ] `GET /skill.md` → returns markdown (content-type text/markdown)
+- [ ] Describes what ZenithPulse does (1 paragraph)
+- [ ] Lists available tools with params
+- [ ] Includes MCP config JSON block (pointing to deployed URL)
+- [ ] No auth required
+
+**Verification:**
+- curl /skill.md → readable skill manifest with correct MCP config
+
+**Dependencies:** Task 30
+
+**Files:**
+- `packages/server/src/api/routes/skill.ts`
+- `packages/server/src/api/skill-content.ts`
+
+**Scope:** S
+
+---
+
+### Checkpoint: MCP + SKILL.md
+- [ ] MCP tools callable from Claude/Cursor
+- [ ] SKILL.md served at /skill.md
+- [ ] MCP config in SKILL.md points to live URL
+
+---
+
+## Phase 9: Deployment
+
+### Task 32: Dockerfile + docker-compose
+
+**Description:** Multi-stage Dockerfile for server (Bun runtime). Docker Compose file at root with server + persistent volume for SQLite.
+
+**Acceptance criteria:**
+- [ ] `docker compose up` → full server running, observer loop active
+- [ ] SQLite DB persisted to volume (survives restart)
+- [ ] Health endpoint responds from container
+- [ ] `.env.example` documents all required vars
+- [ ] Image size < 200MB
+
+**Verification:**
+- `docker compose up` → curl health → data persists after restart
+
+**Dependencies:** Task 25
+
+**Files:**
+- `Dockerfile`
+- `docker-compose.yml`
+- `.env.example` (update)
+
+**Scope:** M
+
+---
+
+### Task 33: Render deploy config
+
+**Description:** `render.yaml` blueprint for one-click Render deploy. Persistent disk for SQLite, env vars from Render dashboard.
+
+**Acceptance criteria:**
+- [ ] `render.yaml` at repo root with web service config
+- [ ] Bun runtime, `bun run start` command
+- [ ] Persistent disk at `/data` (1GB)
+- [ ] Env vars listed (secretKeys for API keys)
+- [ ] Health check path configured
+- [ ] Deploy succeeds → server live at Render URL
+
+**Verification:**
+- Push → Render auto-deploys → health endpoint responds at public URL
+
+**Dependencies:** Task 32
+
+**Files:**
+- `render.yaml`
+- `packages/server/package.json` (add `start` script)
+
+**Scope:** S
+
+---
+
+### Task 34: Vercel deploy config
+
+**Description:** `vercel.json` for dashboard deploy. NEXT_PUBLIC_API_URL points to Render server URL.
+
+**Acceptance criteria:**
+- [ ] `vercel.json` at `packages/dashboard/` or root
+- [ ] Dashboard builds and deploys on Vercel
+- [ ] `NEXT_PUBLIC_API_URL` env var set to Render URL
+- [ ] Dashboard live at Vercel URL → fetches data from server
+
+**Verification:**
+- Push → Vercel auto-deploys → dashboard loads → shows live data from Render server
+
+**Dependencies:** Task 33, Task 26
+
+**Files:**
+- `packages/dashboard/vercel.json` or root `vercel.json`
+
+**Scope:** S
+
+---
+
+### Task 35: README with live URLs + deploy buttons
+
+**Description:** Production README with architecture diagram, live URL badges, one-click deploy buttons, quickstart, and demo video embed.
+
+**Acceptance criteria:**
+- [ ] Problem → architecture diagram → live URLs (badge format)
+- [ ] "Deploy to Render" button + "Deploy to Vercel" button
+- [ ] Quickstart: clone → `docker compose up` → running in 30s
+- [ ] Tech stack list
+- [ ] MCP config block (copy-paste into Claude/Cursor)
+- [ ] Demo video embed (placeholder until recorded)
+- [ ] `.env.example` referenced with all vars documented
+
+**Verification:**
+- README renders on GitHub → all links work → deploy buttons configured
+
+**Dependencies:** Task 33, Task 34
+
+**Files:**
+- `README.md`
+
+**Scope:** M
+
+---
+
+### Checkpoint: Deployment
+- [ ] `docker compose up` → full stack runs locally
+- [ ] Render URL live → health endpoint responds
+- [ ] Vercel URL live → dashboard fetches from Render
+- [ ] README has deploy buttons + live URL badges
+- [ ] SKILL.md references deployed URL (not localhost)
+
 

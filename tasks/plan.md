@@ -171,13 +171,52 @@ Layer 9: Next.js dashboard
 | 4–5 | Drift + Scoring | Drift detected, risk scored per cycle |
 | 5–6 | Enforcement | Futures orders cancelled, positions closed |
 | 6–7 | Trace + Alerts | Full audit log, Telegram alerts |
-| 7–8 | API | REST + SSE serving dashboard |
-| 8–10 | Dashboard | Real-time UI, mode switching |
-| 11–12 | Integration testing | End-to-end demo flow works |
-|| 13–14 | Demo recording | 3-minute video produced |
-|| 15 | Submission | Package, README, SKILL.md, submit |
+| 7–8 | API + MCP | REST + SSE + MCP server (5 tools) |
+| 8–10 | Dashboard | Real-time UI, mode switching (configurable API_URL) |
+| 10–11 | Deploy | Dockerfile + docker-compose + Render + Vercel |
+| 11–12 | Integration + SKILL.md | End-to-end on deployed infra, skill.md at live URL |
+| 13–14 | Demo recording | 3-minute video on live deployed instance |
+| 15 | Submission | README with live URLs + deploy button, submit |
 
 **Buffer:** 2 days of overlap between phases. If any phase takes an extra day, timeline still holds.
+
+---
+
+## Deployment Architecture (Locked)
+
+This is production infra, not a local demo. Judges have 500 submissions — they click URLs.
+
+```
+┌─────────────────────────────┐     ┌──────────────────────────┐
+│  Render (always-on worker)  │     │  Vercel (static deploy)  │
+│                             │     │                          │
+│  Hono Server (:3001)        │◀────│  Next.js Dashboard       │
+│  Observer Loop (15s poll)   │     │  (NEXT_PUBLIC_API_URL)   │
+│  MCP Server                 │     │                          │
+│  GET /skill.md              │     └──────────────────────────┘
+│  SQLite on persistent disk  │
+│  /data/zenithpulse.db       │
+└─────────────────────────────┘
+         ▲
+         │ MCP (stdio or HTTP)
+         │
+┌────────┴────────┐
+│ Developer's IDE │
+│ Claude / Cursor │
+└─────────────────┘
+```
+
+| Component | Deploy to | Config |
+|---|---|---|
+| Server + Observer + MCP | Render (persistent disk) | `render.yaml`, Bun runtime |
+| Dashboard | Vercel | `vercel.json`, `NEXT_PUBLIC_API_URL` |
+| Self-hosted | Docker Compose | `docker-compose.yml` at root |
+| SKILL.md | Served from Render URL | `GET /skill.md` (no auth) |
+
+**Critical constraints:**
+- Dashboard: `NEXT_PUBLIC_API_URL` env var (never hardcode localhost)
+- Server: bind `0.0.0.0` (not just localhost)
+- DB: `DB_PATH=/data/zenithpulse.db` (Render persistent disk mount)
 
 ---
 
@@ -190,5 +229,7 @@ Layer 9: Next.js dashboard
 | 3 | Drift detected for known violation. Risk score correct per formula. |
 | 4 | Enforcement cancels a real limit order in ≤30s. |
 | 5 | Full trace in SQLite. Telegram alert received. |
-| 6 | All API endpoints respond. SSE streams events. |
+| 6 | All API endpoints respond. SSE streams events. MCP tools callable. |
 | 7 | Dashboard renders live data. Demo scenario executable. |
+| 8 | `docker compose up` → full stack runs. Render/Vercel URLs live. |
+| 9 | Demo video recorded on deployed instance. README has live URL badge. |
