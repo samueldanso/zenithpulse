@@ -2,24 +2,18 @@ import { z } from "zod";
 import type { AppConfig } from "../config.js";
 
 const officialMetricsSchema = z
-	.object({
-		summary: z
-			.object({
-				sharpe_ratio: z.number().optional().default(0),
-				max_drawdown_pct: z.number().optional().default(0),
-				total_return_pct: z.number().optional().default(0),
-				total_trades: z.number().optional().default(0),
-				margin_budget: z.number().optional().default(0),
-			})
-			.optional(),
+	.record(z.unknown())
+	.transform((m) => {
+		const summary = typeof m.summary === "object" && m.summary !== null ? m.summary : {};
+		const s = summary as Record<string, unknown>;
+		return {
+			sharpe_ratio: asNum(s.sharpe_ratio) ?? asNum(m.sharpe_ratio) ?? 0,
+			max_drawdown_pct: asNum(s.max_drawdown_pct) ?? asNum(m.max_drawdown_pct) ?? 0,
+			total_return_pct: asNum(s.total_return_pct) ?? asNum(m.total_return_pct) ?? 0,
+			total_trades: asNum(s.total_trades) ?? asNum(m.total_trades) ?? 0,
+			margin_budget: asNum(s.margin_budget) ?? asNum(m.margin_budget) ?? 0,
+		};
 	})
-	.transform((m) => ({
-		sharpe_ratio: m.summary?.sharpe_ratio ?? 0,
-		max_drawdown_pct: m.summary?.max_drawdown_pct ?? 0,
-		total_return_pct: m.summary?.total_return_pct ?? 0,
-		total_trades: m.summary?.total_trades ?? 0,
-		margin_budget: m.summary?.margin_budget ?? 0,
-	}))
 	.catch({
 		sharpe_ratio: 0,
 		max_drawdown_pct: 0,
@@ -27,6 +21,11 @@ const officialMetricsSchema = z
 		total_trades: 0,
 		margin_budget: 0,
 	});
+
+function asNum(v: unknown): number | null {
+	if (typeof v === "number" && Number.isFinite(v)) return v;
+	return null;
+}
 
 const playbookSchema = z.object({
 	strategy_id: z.string(),
