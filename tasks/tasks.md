@@ -284,10 +284,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Implement individual drift detection functions — one per rule: asset drift, position oversize, drawdown breach, unauthorized trade, Sharpe degradation. Each returns a `DriftResult`.
 
 **Acceptance criteria:**
-- [ ] `detectAssetDrift(contract, state)` → violation when order on non-allowed symbol
-- [ ] `detectOversize(contract, state)` → violation when exposure > margin budget
-- [ ] `detectDrawdownBreach(contract, state)` → violation when drawdown > max
-- [ ] `detectSharpeDegradation(contract, state)` → warn when rolling < backtest
+- [x] `detectAssetDrift(contract, state)` → violation when order on non-allowed symbol
+- [x] `detectOversize(contract, state)` → violation when exposure > margin budget
+- [x] `detectDrawdownBreach(contract, state)` → violation when drawdown > max
+- [x] `detectSharpeDegradation(contract, state)` → warn when rolling < backtest
 - [x] Each returns `pass` when within bounds
 
 **Verification:**
@@ -510,11 +510,11 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Set up grammy bot instance, alert formatting, and trigger logic. Alert fires on violations in enforce/observe mode (not silent).
 
 **Acceptance criteria:**
-- [ ] grammy bot connects and sends test message
-- [ ] Alert message includes: playbook name, drift rule, risk score, action taken
-- [ ] Alert fires on violation in enforce/observe mode
-- [ ] No alert in silent mode
-- [ ] Rate limiting: max 1 alert per playbook per 60s
+- [x] grammy bot connects and sends test message
+- [x] Alert message includes: playbook name, drift rule, risk score, action taken
+- [x] Alert fires on violation in enforce/observe mode
+- [x] No alert in silent mode
+- [x] Rate limiting: max 1 alert per playbook per 60s
 
 **Verification:**
 - Integration: trigger violation → Telegram message received
@@ -535,9 +535,9 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Replace alert stub. After trace, evaluate alert trigger conditions and send Telegram notification.
 
 **Acceptance criteria:**
-- [ ] Alerts fire after trace is persisted
-- [ ] Alert failure doesn't crash observer loop
-- [ ] Alert includes trace ID for cross-reference
+- [x] Alerts fire after trace is persisted
+- [x] Alert failure doesn't crash observer loop
+- [x] Alert includes trace ID for cross-reference
 
 **Verification:**
 - Start server → trigger violation → Telegram alert with trace link
@@ -552,9 +552,9 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 ---
 
 ### Checkpoint: Decision Trace + Alerts
-- [ ] Full cycle: poll → detect → score → enforce → trace → alert
-- [ ] All traces in SQLite with reasoning
-- [ ] Telegram alert received on violation
+- [x] Full cycle: poll → detect → score → enforce → trace → alert
+- [x] All traces in SQLite with reasoning
+- [x] Telegram alert received on violation
 
 ---
 
@@ -565,10 +565,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Hono routes for playbook CRUD — list all, get detail, switch mode.
 
 **Acceptance criteria:**
-- [ ] `GET /api/playbooks` → JSON array with risk state
-- [ ] `GET /api/playbooks/:id` → single playbook with contract
-- [ ] `PATCH /api/playbooks/:id/mode` → updates mode (validate against enum)
-- [ ] Error responses use consistent shape `{ error: string }`
+- [x] `GET /api/playbooks` → JSON array with risk state
+- [x] `GET /api/playbooks/:id` → single playbook with contract
+- [x] `PATCH /api/playbooks/:id/mode` → updates mode (validate against enum)
+- [x] Error responses use consistent shape `{ error: string }`
 
 **Verification:**
 - curl all three endpoints → correct responses
@@ -588,10 +588,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Routes for querying decision traces — list (paginated, filterable) and detail.
 
 **Acceptance criteria:**
-- [ ] `GET /api/traces?playbook_id=X&limit=50&offset=0` → paginated traces
-- [ ] `GET /api/traces/:id` → single trace with full detail
-- [ ] Filter by action type (none, cancel_order, close_position)
-- [ ] Returns total count for pagination
+- [x] `GET /api/traces?playbook_id=X&limit=50&offset=0` → paginated traces
+- [x] `GET /api/traces/:id` → single trace with full detail
+- [x] Filter by action type (none, cancel_order, close_position)
+- [x] Returns total count for pagination
 
 **Verification:**
 - curl with filters → correct results
@@ -611,11 +611,11 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Server-Sent Events endpoint for real-time dashboard updates. Emits cycle events (risk score, drift, enforcement).
 
 **Acceptance criteria:**
-- [ ] `GET /api/events` → SSE connection
-- [ ] Emits `cycle` event after each observer cycle (risk score, state, drift count)
-- [ ] Emits `enforcement` event when action fires
-- [ ] Connection heartbeat every 30s
-- [ ] Multiple clients supported
+- [x] `GET /api/events` → SSE connection
+- [x] Emits `cycle` event after each observer cycle (risk score, state, drift count)
+- [x] Emits `enforcement` event when action fires
+- [x] Connection heartbeat every 30s
+- [x] Multiple clients supported
 
 **Verification:**
 - Connect via curl → receive events as cycles run
@@ -635,8 +635,8 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Enhanced health endpoint with uptime, last cycle time, active playbook count, observer state.
 
 **Acceptance criteria:**
-- [ ] `GET /api/health` → `{ status, uptime, lastCycleAt, playbookCount, observerRunning }`
-- [ ] Returns 200 when observer running, 503 if not started
+- [x] `GET /api/health` → `{ status, uptime, lastCycleAt, playbookCount, observerRunning }`
+- [x] Returns 200 when observer running, 503 if not started
 
 **Verification:**
 - curl → matches server state
@@ -651,9 +651,9 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 ---
 
 ### Checkpoint: API Layer
-- [ ] All REST endpoints respond with correct data
-- [ ] SSE streams live cycle events
-- [ ] Mode switch persists and takes effect next cycle
+- [x] All REST endpoints respond with correct data
+- [x] SSE streams live cycle events
+- [x] Mode switch persists and takes effect next cycle
 
 ---
 
@@ -664,10 +664,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Next.js 16 app with Tailwind v4, shadcn/ui, configurable API_URL. API client using fetch + SSE hook.
 
 **Acceptance criteria:**
-- [ ] `bun run --filter @zenithpulse/dashboard dev` → renders on :3000
-- [ ] `NEXT_PUBLIC_API_URL` env var used for all API calls (NOT hardcoded)
-- [ ] SSE hook connects and receives events
-- [ ] Basic layout (header, sidebar placeholder)
+- [x] `bun run --filter @zenithpulse/dashboard dev` → renders on :3000
+- [x] `NEXT_PUBLIC_API_URL` env var used for all API calls (NOT hardcoded)
+- [x] SSE hook connects and receives events
+- [x] Basic layout (header, sidebar placeholder)
 
 **Verification:**
 - Start dashboard → connects to server → no console errors
@@ -689,10 +689,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Main page showing all monitored playbooks with live risk scores, modes, and aggregate status.
 
 **Acceptance criteria:**
-- [ ] Lists all playbooks with name, risk score, risk state badge, mode
-- [ ] Risk score updates via SSE (no page refresh)
-- [ ] Color-coded risk badges (green/yellow/red)
-- [ ] Click playbook → navigates to detail
+- [x] Lists all playbooks with name, risk score, risk state badge, mode
+- [x] Risk score updates via SSE (no page refresh)
+- [x] Color-coded risk badges (green/yellow/red)
+- [x] Click playbook → navigates to detail
 
 **Verification:**
 - Dashboard shows playbooks → risk updates live
@@ -713,11 +713,11 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Shows behavioral contract rules, current drift state, risk gauge, mode switcher, and recent traces.
 
 **Acceptance criteria:**
-- [ ] Displays contract rules (allowed assets, max drawdown, max exposure, min sharpe)
-- [ ] Shows current violations highlighted
-- [ ] Risk score gauge (visual)
-- [ ] Mode switcher (enforce/observe/silent) with API call
-- [ ] Recent traces list (last 10)
+- [x] Displays contract rules (allowed assets, max drawdown, max exposure, min sharpe)
+- [x] Shows current violations highlighted
+- [x] Risk score gauge (visual)
+- [x] Mode switcher (enforce/observe/silent) with API call
+- [x] Recent traces list (last 10)
 
 **Verification:**
 - Navigate to playbook → all data renders → switch mode → persists
@@ -739,10 +739,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 **Description:** Filterable feed of decision traces showing reasoning, actions, timestamps.
 
 **Acceptance criteria:**
-- [ ] Lists traces with timestamp, playbook, risk score, action, reasoning snippet
-- [ ] Filter by playbook, action type
-- [ ] Click → expand to full reasoning + state snapshot
-- [ ] New traces appear via SSE (no refresh)
+- [x] Lists traces with timestamp, playbook, risk score, action, reasoning snippet
+- [x] Filter by playbook, action type
+- [x] Click → expand to full reasoning + state snapshot
+- [x] New traces appear via SSE (no refresh)
 
 **Verification:**
 - Traces page → shows history → filter works → new trace appears live
@@ -758,10 +758,10 @@ Vertical-slice task breakdown following the implementation plan. Each task leave
 ---
 
 ### Checkpoint: Dashboard
-- [ ] Dashboard renders live data from server
-- [ ] Risk scores update without refresh
-- [ ] Mode switching works end-to-end
-- [ ] Trace feed shows enforcement actions
+- [x] Dashboard renders live data from server
+- [x] Risk scores update without refresh
+- [x] Mode switching works end-to-end
+- [x] Trace feed shows enforcement actions
 
 ---
 
