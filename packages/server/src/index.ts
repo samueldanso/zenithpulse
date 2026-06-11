@@ -16,7 +16,7 @@ const bitgetClient = createBitgetClient(config);
 const playbookClient = createPlaybookClient(config);
 
 const app = new Hono();
-const routes = createRoutes(db, config);
+const routes = createRoutes(db);
 app.route("/", routes);
 
 startObserver(config, db, bitgetClient, playbookClient);

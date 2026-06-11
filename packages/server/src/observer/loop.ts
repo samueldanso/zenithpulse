@@ -131,8 +131,9 @@ async function runCycle(db: Db, bitgetClient: BitgetClient, config: AppConfig): 
 			}
 
 			const cycleId = crypto.randomUUID();
+			const playbookMode = pb.mode || config.MODE_DEFAULT;
 			const actionResults = await runEnforcement(
-				config.MODE_DEFAULT,
+				playbookMode,
 				driftResults,
 				liveState,
 				bitgetClient,
@@ -171,7 +172,7 @@ async function runCycle(db: Db, bitgetClient: BitgetClient, config: AppConfig): 
 				});
 			}
 
-			stubAlert(config.MODE_DEFAULT, driftResults);
+			stubAlert(playbookMode, driftResults);
 		}
 	} catch (err) {
 		console.error("[observer] Cycle error:", err);

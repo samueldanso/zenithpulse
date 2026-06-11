@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { AppConfig } from "../../config.js";
 import type { getDb } from "../../db/client.js";
 import * as schema from "../../db/schema.js";
 
@@ -11,7 +10,7 @@ const modeSchema = z.object({
 	mode: z.enum(["observe", "enforce", "silent"]),
 });
 
-export function createPlaybookRoutes(db: Db, config: AppConfig) {
+export function createPlaybookRoutes(db: Db) {
 	const app = new Hono();
 
 	app.get("/", (c) => {
@@ -71,8 +70,6 @@ export function createPlaybookRoutes(db: Db, config: AppConfig) {
 			.set({ mode: parsed.data.mode })
 			.where(eq(schema.playbooks.id, id))
 			.run();
-
-		config.MODE_DEFAULT = parsed.data.mode;
 
 		return c.json({ id, mode: parsed.data.mode });
 	});

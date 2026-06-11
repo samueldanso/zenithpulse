@@ -1,4 +1,4 @@
-import { count } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { getDb } from "../../db/client.js";
 import * as schema from "../../db/schema.js";
@@ -20,7 +20,13 @@ export function createTraceRoutes(db: Db) {
 
 		const data = listTraces(db, { playbookId, limit, offset, action });
 
-		const totalResult = db.select({ value: count() }).from(schema.traces).get();
+		const conditions = [];
+		if (playbookId) conditions.push(eq(schema.traces.playbookId, playbookId));
+		if (action) conditions.push(eq(schema.traces.enforcementAction, action));
+		const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+		const totalQuery = db.select({ value: count() }).from(schema.traces);
+		const totalResult = (where ? totalQuery.where(where) : totalQuery).get();
 		const total = totalResult?.value ?? 0;
 
 		return c.json({ data, total, limit, offset });

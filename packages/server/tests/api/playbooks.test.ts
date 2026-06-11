@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppConfig } from "../../src/config.js";
 
 const mockAll = vi.fn((): unknown[] => []);
 const mockGet = vi.fn((): unknown => undefined);
@@ -25,22 +24,17 @@ const mockDb = {
 	update: mockUpdate,
 };
 
-const mockConfig = {
-	MODE_DEFAULT: "observe" as string,
-};
-
 describe("playbook routes", () => {
 	let app: Hono;
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		mockConfig.MODE_DEFAULT = "observe";
 
 		const { createPlaybookRoutes } = await import("../../src/api/routes/playbooks.js");
 		app = new Hono().route(
 			"/api/playbooks",
 			// biome-ignore lint/suspicious/noExplicitAny: vitest mock cannot satisfy full Drizzle type
-			createPlaybookRoutes(mockDb as any, mockConfig as AppConfig),
+			createPlaybookRoutes(mockDb as any),
 		);
 	});
 
@@ -130,7 +124,6 @@ describe("playbook routes", () => {
 		const body = await res.json();
 		expect(body.id).toBe("pb-1");
 		expect(body.mode).toBe("enforce");
-		expect(mockConfig.MODE_DEFAULT).toBe("enforce");
 	});
 
 	it("PATCH /api/playbooks/:id/mode with invalid mode returns 400", async () => {
