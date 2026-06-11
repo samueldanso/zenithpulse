@@ -15,6 +15,9 @@ import {
 	detectSharpeDegradation,
 } from "../drift/detect.js";
 import { computeRiskScore, getRiskState } from "../drift/score.js";
+import { executeEnforcement } from "../enforce/actions.js";
+import { decideEnforcement } from "../enforce/engine.js";
+import type { ActionResult } from "../enforce/types.js";
 import { pollLiveState } from "./poller.js";
 
 type Db = ReturnType<typeof getDb>;
@@ -119,8 +122,13 @@ async function runCycle(db: Db, bitgetClient: BitgetClient, config: AppConfig): 
 				}
 			}
 
-			const enforcement = stubEnforce(config.MODE_DEFAULT, driftResults);
-			stubTrace(pb.id, liveState, contract, driftResults, riskScore, enforcement);
+			const actionResults = await runEnforcement(
+				config.MODE_DEFAULT,
+				driftResults,
+				liveState,
+				bitgetClient,
+			);
+			stubTrace(pb.id, liveState, contract, driftResults, riskScore, actionResults);
 			stubAlert(config.MODE_DEFAULT, driftResults);
 		}
 	} catch (err) {
@@ -145,9 +153,35 @@ function runDetection(contract: BehavioralContract, state: LiveState): DriftResu
 	];
 }
 
-function stubEnforce(_mode: string, _driftResults: DriftResult[]): string {
-	console.log("  stub: enforce called");
-	return "none";
+async function runEnforcement(
+	mode: string,
+	driftResults: DriftResult[],
+	state: LiveState,
+	bitgetClient: BitgetClient,
+): Promise<ActionResult[]> {
+	try {
+		const plan = decideEnforcement(mode, driftResults, state);
+		const results = await executeEnforcement(plan, bitgetClient);
+
+		for (const r of results) {
+			if (r.action.type === "none") {
+				console.log(`[enforce] no action (mode: ${mode})`);
+			} else if (r.success) {
+				const target =
+					"orderId" in r.action ? `orderId=${r.action.orderId}` : `symbol=${r.action.symbol}`;
+				console.log(`[enforce] ${r.action.type} ${target} -> success`);
+			} else {
+				const target =
+					"orderId" in r.action ? `orderId=${r.action.orderId}` : `symbol=${r.action.symbol}`;
+				console.log(`[enforce] ${r.action.type} ${target} -> failed: ${r.error}`);
+			}
+		}
+
+		return results;
+	} catch (err) {
+		console.error("[enforce] Unexpected error:", err);
+		return [];
+	}
 }
 
 function stubTrace(
@@ -156,7 +190,7 @@ function stubTrace(
 	_contract: BehavioralContract,
 	_driftResults: DriftResult[],
 	_riskScore: number,
-	_enforcement: string,
+	_actionResults: ActionResult[],
 ): void {
 	console.log("  stub: trace called");
 }
