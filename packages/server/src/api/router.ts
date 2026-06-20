@@ -6,6 +6,7 @@ import * as schema from "../db/schema.js";
 import { lastCycleAt, observerRunning } from "../observer/loop.js";
 import { createEventRoutes } from "./events.js";
 import { createPlaybookRoutes } from "./playbooks.js";
+import { createSkillRoute } from "./routes/skill.js";
 import { createTraceRoutes } from "./traces.js";
 
 type Db = ReturnType<typeof getDb>;
@@ -44,6 +45,7 @@ export function createRoutes(db: Db) {
 	app.route("/api/playbooks", createPlaybookRoutes(db));
 	app.route("/api/traces", createTraceRoutes(db));
 	app.route("/api/events", createEventRoutes());
+	app.route("/skill.md", createSkillRoute());
 
 	return app;
 }
