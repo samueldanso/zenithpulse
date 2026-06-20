@@ -46,3 +46,6 @@ coverage/
 
 /.resources
 /context/
+/reviews/
+/tasks/
+/docs/
