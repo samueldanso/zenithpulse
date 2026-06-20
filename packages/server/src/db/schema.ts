@@ -10,6 +10,7 @@ export const playbooks = sqliteTable("playbooks", {
 	lastObservedAt: text("last_observed_at"),
 	riskScore: real("risk_score").default(0),
 	riskState: text("risk_state").default("healthy"),
+	peakBalance: real("peak_balance").default(0),
 	createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
 

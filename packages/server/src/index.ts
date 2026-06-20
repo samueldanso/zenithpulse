@@ -34,9 +34,9 @@ function shutdown() {
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
+console.log(`[server] ZenithPulse running on port ${config.PORT}`);
+
 export default {
 	port: config.PORT,
 	fetch: app.fetch,
 };
-
-console.log(`[server] ZenithPulse running on port ${config.PORT}`);

@@ -14,6 +14,12 @@ export async function runMigrations(dbPath: string): Promise<void> {
 	const migrationsFolder = resolve(import.meta.dir, "../../drizzle");
 	migrate(db, { migrationsFolder });
 
+	try {
+		sqlite.exec("ALTER TABLE playbooks ADD COLUMN peak_balance REAL DEFAULT 0");
+	} catch (_) {
+		// Column already exists
+	}
+
 	sqlite.close();
 	console.log("[db] Migrations complete");
 }

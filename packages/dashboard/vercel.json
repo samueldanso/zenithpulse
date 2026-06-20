@@ -1,5 +1,6 @@
 {
 	"framework": "nextjs",
+	"rootDirectory": "packages/dashboard",
 	"installCommand": "bun install",
 	"buildCommand": "bun run build"
 }

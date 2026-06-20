@@ -15,7 +15,9 @@ const MOCK_CONTRACT_JSON = JSON.stringify({
 	totalTrades: 142,
 });
 
-const mockAll = vi.fn(() => [{ id: "btc-ema-cross-demo", contractJson: MOCK_CONTRACT_JSON }]);
+const mockAll = vi.fn(() => [
+	{ id: "btc-ema-cross-demo", contractJson: MOCK_CONTRACT_JSON, peakBalance: 0, mode: "observe" },
+]);
 const mockFrom = vi.fn(() => ({ all: mockAll }));
 const mockDbSelect = vi.fn(() => ({ from: mockFrom }));
 
@@ -64,14 +66,17 @@ vi.mock("../../src/contract/derive.js", () => ({
 
 vi.mock("../../src/observer/poller.js", () => ({
 	pollLiveState: vi.fn(async () => ({
-		timestamp: new Date().toISOString(),
-		accountBalance: 1000,
-		openOrders: [],
-		openPlanOrders: [],
-		positions: [],
-		currentDrawdown: 0,
-		totalExposure: 0,
-		rollingSharpe: 0,
+		liveState: {
+			timestamp: new Date().toISOString(),
+			accountBalance: 1000,
+			openOrders: [],
+			openPlanOrders: [],
+			positions: [],
+			currentDrawdown: 0,
+			totalExposure: 0,
+			rollingSharpe: 0,
+		},
+		newPeak: 1000,
 	})),
 }));
 

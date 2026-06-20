@@ -102,12 +102,13 @@ async function runCycle(db: Db, bitgetClient: BitgetClient, config: AppConfig): 
 	state.cycleInProgress = true;
 
 	try {
-		const liveState = await pollLiveState(bitgetClient);
-
 		const playbooks = db.select().from(schema.playbooks).all();
 		for (const pb of playbooks) {
+			const currentPeak = pb.peakBalance ?? 0;
+			const { liveState, newPeak } = await pollLiveState(bitgetClient, currentPeak);
+
 			db.update(schema.playbooks)
-				.set({ lastObservedAt: new Date().toISOString() })
+				.set({ lastObservedAt: new Date().toISOString(), peakBalance: newPeak })
 				.where(eq(schema.playbooks.id, pb.id))
 				.run();
 

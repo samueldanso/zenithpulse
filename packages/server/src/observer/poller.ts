@@ -2,13 +2,15 @@ import type { LiveState } from "@zenithpulse/shared";
 import type { BitgetClient } from "../bitget/client.js";
 import { computeCurrentDrawdown, computeTotalExposure } from "./state.js";
 
-let peakBalance = 0;
-
-export function resetPeakBalance(): void {
-	peakBalance = 0;
+export interface PollResult {
+	liveState: LiveState;
+	newPeak: number;
 }
 
-export async function pollLiveState(bitgetClient: BitgetClient): Promise<LiveState> {
+export async function pollLiveState(
+	bitgetClient: BitgetClient,
+	currentPeak: number,
+): Promise<PollResult> {
 	const [accountBalance, openOrders, openPlanOrders, positions] = await Promise.all([
 		bitgetClient.getAccountBalance().catch(() => 0),
 		bitgetClient.getOpenOrders().catch(() => []),
@@ -16,21 +18,22 @@ export async function pollLiveState(bitgetClient: BitgetClient): Promise<LiveSta
 		bitgetClient.getFuturesPositions("USDT-FUTURES").catch(() => []),
 	]);
 
-	if (accountBalance > peakBalance) {
-		peakBalance = accountBalance;
-	}
+	const newPeak = accountBalance > currentPeak ? accountBalance : currentPeak;
 
 	const totalExposure = computeTotalExposure(positions, openOrders);
-	const currentDrawdown = computeCurrentDrawdown(accountBalance, peakBalance);
+	const currentDrawdown = computeCurrentDrawdown(accountBalance, newPeak);
 
 	return {
-		timestamp: new Date().toISOString(),
-		accountBalance,
-		openOrders,
-		openPlanOrders,
-		positions,
-		currentDrawdown,
-		totalExposure,
-		rollingSharpe: 0,
+		liveState: {
+			timestamp: new Date().toISOString(),
+			accountBalance,
+			openOrders,
+			openPlanOrders,
+			positions,
+			currentDrawdown,
+			totalExposure,
+			rollingSharpe: 0,
+		},
+		newPeak,
 	};
 }

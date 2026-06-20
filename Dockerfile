@@ -5,7 +5,6 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY packages/server/package.json packages/server/
 COPY packages/shared/package.json packages/shared/
-COPY .resources/agent_hub/package.json .resources/agent_hub/
 RUN bun install --frozen-lockfile --production
 
 FROM base AS build
@@ -13,11 +12,9 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY packages/server/package.json packages/server/
 COPY packages/shared/package.json packages/shared/
-COPY .resources/agent_hub/package.json .resources/agent_hub/
 RUN bun install --frozen-lockfile
 COPY packages/shared/ packages/shared/
 COPY packages/server/ packages/server/
-COPY .resources/agent_hub/ .resources/agent_hub/
 
 FROM base AS runtime
 WORKDIR /app
@@ -25,7 +22,6 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/server/node_modules ./packages/server/node_modules
 COPY --from=build /app/packages/shared ./packages/shared
 COPY --from=build /app/packages/server ./packages/server
-COPY --from=build /app/.resources/agent_hub ./.resources/agent_hub
 COPY package.json ./
 
 ENV NODE_ENV=production
