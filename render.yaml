@@ -36,6 +36,6 @@ services:
       - key: TELEGRAM_CHAT_ID
         sync: false
       - key: ALLOWED_ORIGINS
-        value: https://zenithpulse.vercel.app
+        value: https://zenithpulse-dashboard.vercel.app
       - key: ZENITHPULSE_API_KEY
         sync: false
