@@ -4,7 +4,7 @@ import type { AppConfig } from "../../src/config.js";
 const mockPrivateGet = vi.fn();
 const mockPrivatePost = vi.fn();
 
-vi.mock("../../../../.resources/agent_hub/packages/bitget-core/src/client/rest-client.js", () => ({
+vi.mock("bitget-core", () => ({
 	BitgetRestClient: vi.fn().mockImplementation(() => ({
 		privateGet: mockPrivateGet,
 		privatePost: mockPrivatePost,
