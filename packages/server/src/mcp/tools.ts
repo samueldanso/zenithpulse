@@ -3,14 +3,24 @@ import { count, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { getDb } from "../db/client.js";
 import * as schema from "../db/schema.js";
-import { lastCycleAt, observerRunning } from "../observer/loop.js";
 import { listTraces } from "../trace/store.js";
 
 type Db = ReturnType<typeof getDb>;
 
 const startTime = Date.now();
 
-export function registerTools(server: McpServer, db: Db): void {
+export interface McpRuntimeState {
+	getObserverRunning: () => boolean;
+	getLastCycleAt: () => string | null;
+}
+
+const DEFAULT_RUNTIME_STATE: McpRuntimeState = {
+	getObserverRunning: () => false,
+	getLastCycleAt: () => null,
+};
+
+export function registerTools(server: McpServer, db: Db, runtimeState?: McpRuntimeState): void {
+	const state = runtimeState ?? DEFAULT_RUNTIME_STATE;
 	server.tool("list_playbooks", "List all monitored playbooks with risk state", {}, () => {
 		const rows = db.select().from(schema.playbooks).all();
 		const result = rows.map((row) => ({
@@ -116,12 +126,13 @@ export function registerTools(server: McpServer, db: Db): void {
 	server.tool("get_health", "Get server health, uptime, and observer state", {}, () => {
 		const totalResult = db.select({ value: count() }).from(schema.playbooks).get();
 		const playbookCount = totalResult?.value ?? 0;
+		const isRunning = state.getObserverRunning();
 
 		const result = {
-			status: observerRunning ? "ok" : "degraded",
+			status: isRunning ? "ok" : "degraded",
 			uptime_ms: Date.now() - startTime,
-			observer_running: observerRunning,
-			last_cycle_at: lastCycleAt,
+			observer_running: isRunning,
+			last_cycle_at: state.getLastCycleAt(),
 			playbook_count: playbookCount,
 		};
 		return { content: [{ type: "text", text: JSON.stringify(result) }] };

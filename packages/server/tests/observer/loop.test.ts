@@ -99,6 +99,7 @@ function createMockConfig(overrides?: Partial<AppConfig>): AppConfig {
 		MODE_DEFAULT: "observe",
 		PAPER_TRADING: false,
 		PLAYBOOK_MARGIN_BUDGET: 100,
+		ALLOWED_ORIGINS: "http://localhost:3000",
 		...overrides,
 	};
 }

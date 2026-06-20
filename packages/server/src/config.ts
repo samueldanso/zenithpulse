@@ -17,6 +17,7 @@ const envSchema = z.object({
 	TELEGRAM_BOT_TOKEN: z.string().optional(),
 	TELEGRAM_CHAT_ID: z.string().optional(),
 	ZENITHPULSE_API_KEY: z.string().optional(),
+	ALLOWED_ORIGINS: z.string().default("http://localhost:3000"),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;

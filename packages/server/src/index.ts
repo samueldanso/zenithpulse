@@ -6,7 +6,12 @@ import { loadConfig } from "./config.js";
 import { getDb } from "./db/client.js";
 import { runMigrations } from "./db/migrate.js";
 import { startMcpServer } from "./mcp/server.js";
-import { start as startObserver, stop as stopObserver } from "./observer/loop.js";
+import {
+	lastCycleAt,
+	observerRunning,
+	start as startObserver,
+	stop as stopObserver,
+} from "./observer/loop.js";
 
 const config = loadConfig();
 
@@ -17,11 +22,14 @@ const bitgetClient = createBitgetClient(config);
 const playbookClient = createPlaybookClient(config);
 
 const app = new Hono();
-const routes = createRoutes(db);
+const routes = createRoutes(db, config);
 app.route("/", routes);
 
 startObserver(config, db, bitgetClient, playbookClient);
-startMcpServer(db).catch((err) => {
+startMcpServer(db, {
+	getObserverRunning: () => observerRunning,
+	getLastCycleAt: () => lastCycleAt,
+}).catch((err) => {
 	console.error("[mcp] Failed to start:", err);
 });
 

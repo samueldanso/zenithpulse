@@ -27,6 +27,7 @@ const config: AppConfig = {
 	TELEGRAM_BOT_TOKEN: undefined,
 	TELEGRAM_CHAT_ID: undefined,
 	ZENITHPULSE_API_KEY: undefined,
+	ALLOWED_ORIGINS: "http://localhost:3000",
 };
 
 describe("BitgetClient", () => {

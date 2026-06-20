@@ -16,6 +16,8 @@ COPY --from=build /app/packages/shared ./packages/shared
 COPY --from=build /app/packages/server ./packages/server
 COPY package.json ./
 
+RUN mkdir -p /data
+
 ENV NODE_ENV=production
 ENV DB_PATH=/data/zenithpulse.db
 ENV PORT=3001
