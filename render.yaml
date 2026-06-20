@@ -1,9 +1,7 @@
 services:
   - type: web
     name: zenithpulse-server
-    runtime: node
-    buildCommand: curl -fsSL https://bun.sh/install | bash && export PATH="$HOME/.bun/bin:$PATH" && bun install --frozen-lockfile
-    startCommand: export PATH="$HOME/.bun/bin:$PATH" && cd packages/server && bun run start
+    runtime: docker
     healthCheckPath: /api/health
     plan: starter
     disk:
