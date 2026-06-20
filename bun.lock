@@ -41,6 +41,7 @@
     "packages/server": {
       "name": "@zenithpulse/server",
       "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.29.0",
         "@zenithpulse/shared": "workspace:*",
         "drizzle-orm": "^0.43.1",
         "grammy": "^1.36.0",

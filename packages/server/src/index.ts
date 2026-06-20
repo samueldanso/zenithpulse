@@ -5,6 +5,7 @@ import { createPlaybookClient } from "./bitget/playbook-api.js";
 import { loadConfig } from "./config.js";
 import { getDb } from "./db/client.js";
 import { runMigrations } from "./db/migrate.js";
+import { startMcpServer } from "./mcp/server.js";
 import { start as startObserver, stop as stopObserver } from "./observer/loop.js";
 
 const config = loadConfig();
@@ -20,6 +21,9 @@ const routes = createRoutes(db);
 app.route("/", routes);
 
 startObserver(config, db, bitgetClient, playbookClient);
+startMcpServer(db).catch((err) => {
+	console.error("[mcp] Failed to start:", err);
+});
 
 function shutdown() {
 	console.log("[server] Shutting down...");
