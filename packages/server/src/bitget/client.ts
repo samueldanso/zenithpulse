@@ -1,5 +1,5 @@
 import type { Order, PlanOrder, Position } from "@zenithpulse/shared";
-import { BitgetRestClient } from "../../../../.resources/agent_hub/packages/bitget-core/src/client/rest-client.js";
+import { BitgetRestClient } from "bitget-core";
 import type { AppConfig } from "../config.js";
 
 interface BitgetApiPosition {
