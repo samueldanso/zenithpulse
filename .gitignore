@@ -45,3 +45,4 @@ coverage/
 .turbo
 
 /.resources
+/context/
