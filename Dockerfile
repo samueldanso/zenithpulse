@@ -5,14 +5,14 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY packages/server/package.json packages/server/
 COPY packages/shared/package.json packages/shared/
-RUN bun install --frozen-lockfile --production
+RUN bun install --production
 
 FROM base AS build
 WORKDIR /app
 COPY package.json bun.lock ./
 COPY packages/server/package.json packages/server/
 COPY packages/shared/package.json packages/shared/
-RUN bun install --frozen-lockfile
+RUN bun install
 COPY packages/shared/ packages/shared/
 COPY packages/server/ packages/server/
 
