@@ -2,6 +2,7 @@
 	"name": "@zenithpulse/server",
 	"scripts": {
 		"dev": "bun run --hot --env-file ../../.env src/index.ts",
+		"start": "bun run src/index.ts",
 		"build": "bun build src/index.ts --outdir dist",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit",

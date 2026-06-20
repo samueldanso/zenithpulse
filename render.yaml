@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: zenithpulse-server
+    runtime: node
+    buildCommand: curl -fsSL https://bun.sh/install | bash && export PATH="$HOME/.bun/bin:$PATH" && bun install
+    startCommand: ~/.bun/bin/bun run start --filter @zenithpulse/server
+    healthCheckPath: /api/health
+    plan: starter
+    disk:
+      name: zenithpulse-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DB_PATH
+        value: /data/zenithpulse.db
+      - key: PORT
+        value: 3001
+      - key: POLL_INTERVAL_MS
+        value: 15000
+      - key: MODE_DEFAULT
+        value: observe
+      - key: PAPER_TRADING
+        value: "false"
+      - key: PLAYBOOK_MARGIN_BUDGET
+        value: "100"
+      - key: BITGET_API_KEY
+        sync: false
+      - key: BITGET_SECRET_KEY
+        sync: false
+      - key: BITGET_PASSPHRASE
+        sync: false
+      - key: PLAYBOOK_ACCESS_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: ZENITHPULSE_API_KEY
+        sync: false
