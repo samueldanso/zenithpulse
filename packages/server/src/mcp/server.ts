@@ -15,5 +15,5 @@ export async function startMcpServer(db: Db): Promise<void> {
 
 	const transport = new StdioServerTransport();
 	await server.connect(transport);
-	console.log("[mcp] Server started on stdio");
+	process.stderr.write("[mcp] Server started on stdio\n");
 }

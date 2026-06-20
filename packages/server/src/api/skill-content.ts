@@ -64,7 +64,7 @@ Or for local stdio transport:
   "mcpServers": {
     "zenithpulse": {
       "command": "bun",
-      "args": ["run", "--cwd", "/path/to/zenithpulse/packages/server", "src/index.ts"],
+      "args": ["run", "--cwd", "/path/to/zenithpulse/packages/server", "src/mcp-entry.ts"],
       "env": {
         "BITGET_API_KEY": "...",
         "BITGET_SECRET_KEY": "...",
