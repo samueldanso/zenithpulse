@@ -144,6 +144,32 @@ curl -X PATCH https://zenithpulse-server.onrender.com/api/playbooks/{id}/mode \
 
 ---
 
+## Try It Now
+
+The server is running live — no setup needed to explore:
+
+```bash
+# Check health + observer state
+curl https://zenithpulse-server.onrender.com/api/health
+
+# List monitored playbooks with risk state
+curl https://zenithpulse-server.onrender.com/api/playbooks
+
+# View recent decision traces (full audit trail)
+curl https://zenithpulse-server.onrender.com/api/traces?limit=3
+
+# Read the machine-readable skill definition
+curl https://zenithpulse-server.onrender.com/skill.md
+```
+
+Or run the demo script locally:
+
+```bash
+bun examples/demo-flow.ts
+```
+
+---
+
 ## Quick Start
 
 ### Prerequisites

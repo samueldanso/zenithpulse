@@ -35,7 +35,7 @@ if (!res.ok) {
 }
 
 const data = await res.json();
-console.log(`=== Mode Switched ===\n`);
+console.log("=== Mode Switched ===\n");
 console.log(`Playbook: ${data.id}`);
 console.log(`Mode:     ${data.mode}`);
-console.log(`\nThe observer loop will use this mode on the next cycle (within 15s).`);
+console.log("\nThe observer loop will use this mode on the next cycle (within 15s).");

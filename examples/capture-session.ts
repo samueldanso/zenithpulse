@@ -89,7 +89,13 @@ for (let i = 1; i <= TOTAL_CYCLES; i++) {
 	calls.push(traces);
 
 	// Detail of first playbook (shows contract + full state)
-	const playbookList = playbooks.response as Array<{ id: string; name: string; riskScore: number; riskState: string; executionMode: string }>;
+	const playbookList = playbooks.response as Array<{
+		id: string;
+		name: string;
+		riskScore: number;
+		riskState: string;
+		executionMode: string;
+	}>;
 	if (playbookList.length > 0) {
 		const detail = await call("GET", `/api/playbooks/${playbookList[0].id}`);
 		calls.push(detail);
@@ -163,10 +169,10 @@ mkdirSync(outDir, { recursive: true });
 const outPath = resolve(outDir, "session-capture.json");
 writeFileSync(outPath, JSON.stringify(output, null, 2));
 
-console.log(`\n=== Session Capture Complete ===`);
+console.log("\n=== Session Capture Complete ===");
 console.log(`Total API calls made: ${totalApiCalls}`);
 console.log(`Total cycles:         ${TOTAL_CYCLES}`);
 console.log(`Duration:             ${DURATION_MIN} minutes`);
 console.log(`Output:               ${outPath}`);
 console.log(`\nThis file is your "verifiable usage record" for submission.`);
-console.log(`Judges can verify: timestamps, API call volume, real Bitget data in responses.`);
+console.log("Judges can verify: timestamps, API call volume, real Bitget data in responses.");
