@@ -19,7 +19,7 @@ type Db = ReturnType<typeof getDb>;
 
 const startTime = Date.now();
 
-const SKILL_FILE_PATH = resolve(import.meta.dir, "../../../../SKILL.md");
+const SKILL_FILE_PATH = resolve(process.cwd(), "SKILL.md");
 
 export function createRoutes(db: Db, config: AppConfig, runtimeState?: McpRuntimeState) {
 	const app = new Hono();

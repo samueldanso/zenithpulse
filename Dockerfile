@@ -16,6 +16,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/server/node_modules ./packages/server/node_modules
 COPY --from=build /app/packages/shared ./packages/shared
 COPY --from=build /app/packages/server ./packages/server
+COPY --from=build /app/SKILL.md ./SKILL.md
 COPY package.json ./
 
 RUN mkdir -p /data
