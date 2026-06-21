@@ -10,6 +10,7 @@ This file provides context for any AI agent working with this codebase.
 **Live:** https://zenithpulse-server.onrender.com
 **Dashboard:** https://zenithpulse-dashboard.vercel.app
 **SKILL.md:** https://zenithpulse-server.onrender.com/skill.md
+**Verifiable Proof:** [session-capture.json](examples/sample-output/session-capture.json) — 3-min capture, 48 API calls, 12 cycles, real Bitget data
 
 ---
 

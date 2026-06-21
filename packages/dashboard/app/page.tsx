@@ -117,6 +117,15 @@ export default function OverviewPage() {
 					>
 						npm <ExternalLink className="h-2.5 w-2.5" />
 					</a>
+					<span className="text-border">|</span>
+					<a
+						href="https://github.com/samueldanso/zenithpulse/blob/main/examples/sample-output/session-capture.json"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="flex items-center gap-1 hover:text-foreground transition-colors"
+					>
+						Proof Log <ExternalLink className="h-2.5 w-2.5" />
+					</a>
 				</div>
 			</header>
 
