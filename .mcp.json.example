@@ -1,0 +1,11 @@
+{
+	"mcpServers": {
+		"zenithpulse": {
+			"command": "bun",
+			"args": ["run", "packages/mcp/src/index.ts"],
+			"env": {
+				"ZENITHPULSE_API_URL": "http://localhost:3001"
+			}
+		}
+	}
+}
