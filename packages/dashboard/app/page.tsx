@@ -120,15 +120,12 @@ export default function OverviewPage() {
 				</div>
 			</header>
 
-			{/* Thesis Banner */}
-			<div className="mb-6 border border-border bg-card/50 px-4 py-3">
-				<p className="text-xs text-muted-foreground leading-relaxed">
-					Autonomous risk enforcement runtime for Bitget Playbooks. Reads backtest output → derives
-					behavioral contracts → monitors live execution every 15s → scores risk → enforces when
-					critical. Built for{" "}
-					<span className="text-foreground font-medium">Bitget AI Base Camp S1 — Track 2</span>.
-				</p>
-			</div>
+			{/* Headline */}
+			<p className="mb-6 text-sm text-muted-foreground leading-relaxed max-w-3xl">
+				Autonomous risk enforcement and observability runtime for Bitget Playbooks. Monitors live
+				trading strategies against their own backtest rules — detects drift, scores risk, enforces
+				automatically, and records every decision.
+			</p>
 
 			{/* Stats Row */}
 			<div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -367,13 +364,16 @@ function PlaybookCard({
 				<ModeBadge mode={playbook.executionMode} />
 			</div>
 
-			<div className="mb-3 flex items-end gap-3">
-				<span className={`font-mono text-3xl font-bold tabular-nums ${scoreColor}`}>{score}</span>
+			<div className="mb-3 flex items-center gap-3">
+				<div className="flex items-baseline gap-1.5">
+					<span className={`font-mono text-2xl font-bold tabular-nums ${scoreColor}`}>{score}</span>
+					<span className="font-mono text-[10px] text-muted-foreground">/100</span>
+				</div>
 				<RiskBadge state={state} />
 			</div>
 
 			<div className="flex items-center justify-between">
-				<span className="font-mono text-[10px] text-muted-foreground">last: {lastSeen}</span>
+				<span className="font-mono text-[10px] text-muted-foreground">{lastSeen}</span>
 				<span className="flex items-center gap-1 text-[10px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
 					details <ArrowRight className="h-3 w-3" />
 				</span>
