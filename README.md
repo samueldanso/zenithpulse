@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="packages/dashboard/public/icon-dark.svg" alt="ZenithPulse" height="64" />
+  <img src="packages/dashboard/public/favicon-black.svg" alt="ZenithPulse" height="64" />
 </p>
 
 <h1 align="center">ZenithPulse</h1>
@@ -9,26 +9,20 @@
 </p>
 
 <p align="center">
-  <a href="https://zenithpulse-dashboard.vercel.app">Dashboard</a> · <a href="https://zenithpulse-server.onrender.com/api/health">Server</a> · <a href="https://zenithpulse-server.onrender.com/skill.md">SKILL.md</a> · <a href="https://www.npmjs.com/package/zenithpulse-mcp"><img src="https://img.shields.io/npm/v/zenithpulse-mcp" alt="zenithpulse-mcp on npm" /></a>
+  <a href="https://zenithpulse-dashboard.vercel.app">Dashboard</a> · <a href="https://zenithpulse-server.onrender.com/api/health">Server</a> · <a href="https://zenithpulse-server.onrender.com/skill.md">SKILL.md</a> · <a href="https://www.npmjs.com/package/zenithpulse-mcp">npm</a>
 </p>
 
-ZenithPulse monitors live trading strategies against their own backtest rules — detects when they break promises, scores the risk, and enforces automatically.
+ZenithPulse monitors live trading strategies against their own backtest rules — detects when they drift, scores the risk, enforces automatically, and records every decision.
+
+**Built for:** Bitget AI Base Camp S1 — Track 2 (Trading Infra)
 
 ---
 
 ## Problem
 
-Your Bitget Playbook can go rogue. ZenithPulse watches it 24/7 and stops it.
-
-You backtest a strategy — it promises max 12% drawdown, only trades BTC/ETH, stays within margin. You deploy it as a Playbook. Now what?
-
-Nothing watches whether it actually follows those rules. It can drift, trade unauthorized assets, blow past drawdown limits — and you don't know until capital is lost.
-
-The gap between "Playbook deployed" and "something went wrong" is completely empty.
+You backtest a strategy on Bitget — it promises max 12% drawdown, only trades BTC/ETH, stays within margin. You deploy it as a Playbook. Now nothing monitors whether it actually follows those rules. It can drift, trade unauthorized assets, blow past drawdown limits — and you don't know until capital is lost.
 
 ## Solution
-
-ZenithPulse reads your Playbook's backtest results and turns them into rules. Then it watches live execution every 15 seconds to catch violations — and optionally stops them.
 
 | Component | What it does |
 |---|---|
@@ -229,20 +223,7 @@ bun run typecheck    # TypeScript type checking
                                               └───────────────┘
 ```
 
-### Observer Loop
-
-1. Poll Bitget API → build LiveState snapshot
-2. Load BehavioralContract (derived from backtest)
-3. Drift detection: compare LiveState vs Contract → DriftResult[]
-4. Compute composite risk score from drift results
-5. If mode=enforce and violations → execute enforcement (cancel/close)
-6. Build DecisionTrace (state + rules + results + actions + reasoning)
-7. Persist trace to SQLite
-8. Emit SSE event to connected dashboard clients
-
----
-
-## Operating Modes
+### Operating Modes
 
 | Mode | Detection | Alerting | Enforcement |
 |---|---|---|---|
@@ -252,9 +233,7 @@ bun run typecheck    # TypeScript type checking
 
 Default: `observe`. Switchable per-playbook at runtime via API or dashboard.
 
----
-
-## Risk Scoring
+### Risk Scoring
 
 Composite score (0–100) using max-of-weighted-factors:
 

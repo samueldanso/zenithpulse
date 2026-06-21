@@ -1,41 +1,66 @@
 # Examples
 
-Runnable scripts that demonstrate ZenithPulse in action. All scripts work against the live deployed server by default, or pass a local URL as argument.
+Runnable scripts that demonstrate ZenithPulse against the live production server. No setup needed — just `bun` installed.
 
-## Quick test (no setup needed)
+## One command — full demo
 
 ```bash
-bun examples/check-health.ts
-bun examples/list-playbooks.ts
-bun examples/get-traces.ts
+bun examples/demo-flow.ts
 ```
 
-## Full demo flow
+Runs the complete journey: health → playbook discovery → contract inspection → traces → mode switch → observe cycle → summary. Takes ~30 seconds.
+
+## Individual scripts
 
 ```bash
-# 1. Check server is running
+# Check server health + observer state
 bun examples/check-health.ts
 
-# 2. List discovered playbooks
+# List all monitored playbooks with risk state
 bun examples/list-playbooks.ts
 
-# 3. View decision traces (audit trail)
+# View decision traces (audit trail)
 bun examples/get-traces.ts
 
-# 4. Switch a playbook to enforce mode
+# Filter traces by playbook
+PLAYBOOK_ID=<id> bun examples/get-traces.ts
+
+# Switch enforcement mode
 PLAYBOOK_ID=<id> MODE=enforce bun examples/switch-mode.ts
-
-# 5. Capture a session (verifiable usage record for submission)
-DURATION_MIN=10 bun examples/capture-session.ts
 ```
+
+## Capture verifiable usage record
+
+```bash
+# 10 minutes (default) — produces submission artifact
+bun examples/capture-session.ts
+
+# 30 minutes — stronger evidence
+DURATION_MIN=30 bun examples/capture-session.ts
+```
+
+Output saved to `sample-output/session-capture.json`. This file shows:
+- Continuous 15s polling with timestamps
+- Real Bitget API responses (positions, orders, balance)
+- Behavioral contracts derived from backtest
+- Drift detection results per cycle
+- Risk scores per playbook
+- API call volume (~4 calls/cycle × playbook count)
 
 ## Against local server
 
 ```bash
-bun examples/check-health.ts http://localhost:3001
-bun examples/list-playbooks.ts http://localhost:3001
+bun examples/demo-flow.ts http://localhost:3001
+bun examples/capture-session.ts http://localhost:3001
 ```
 
-## Sample output
+## What judges verify
 
-After running `capture-session.ts`, captured data is saved to `sample-output/`. This serves as the "verifiable usage record" required for hackathon submission.
+| Evidence | Script | What it proves |
+|---|---|---|
+| System is live | `check-health.ts` | Observer running, uptime in hours/days |
+| Real playbooks | `list-playbooks.ts` | Discovered from Bitget getagent-skill API |
+| Contracts from backtest | `demo-flow.ts` | allowedSymbols, maxDrawdown, Sharpe — real data |
+| Continuous monitoring | `capture-session.ts` | 15s intervals, timestamps, call volume |
+| Enforcement works | `switch-mode.ts` | Mode switch live, next cycle uses new mode |
+| Audit trail | `get-traces.ts` | Every decision recorded with full reasoning |

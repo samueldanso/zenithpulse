@@ -2,7 +2,7 @@
 name: zenithpulse
 version: 1.0.0
 description: >
-  Watches your Bitget Playbooks 24/7 and catches them when they break their own backtest rules. Use to check risk state, inspect decision traces, switch enforcement modes, or query the audit trail. Invoke for any Playbook monitoring, risk scoring, enforcement control, or violation history.
+  Monitors your Bitget Playbooks 24/7 and detects when they break their own backtest rules. Use to check risk state, inspect decision traces, switch enforcement modes, or query the audit trail. Invoke for any Playbook monitoring, risk scoring, enforcement control, or violation history.
 homepage: https://zenithpulse-server.onrender.com
 docs: https://github.com/samueldanso/zenithpulse
 metadata: {"api_base": "https://zenithpulse-server.onrender.com", "mcp_server": "packages/mcp/src/index.ts", "mcp_endpoint": "/mcp"}
@@ -10,7 +10,7 @@ metadata: {"api_base": "https://zenithpulse-server.onrender.com", "mcp_server": 
 
 # ZenithPulse
 
-Watches your Bitget Playbooks and stops them when they go rogue. Reads backtest results as the rules, monitors live execution every 15s, scores risk 0–100, enforces automatically (cancel orders, close positions), and records every decision.
+Monitors your Bitget Playbooks and enforces when they drift from their own backtest rules. Reads backtest results as the rules, detects violations every 15s, scores risk 0–100, enforces automatically (cancel orders, close positions), and records every decision.
 
 **Base URL:** `http://localhost:3001` (self-hosted) · `https://zenithpulse-server.onrender.com` (production)
 
