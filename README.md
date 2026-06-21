@@ -1,33 +1,61 @@
-# ZenithPulse
+<p align="center">
+  <img src="packages/dashboard/public/icon-dark.svg" alt="ZenithPulse" height="64" />
+</p>
 
-Autonomous risk enforcement and observability runtime for Bitget Playbooks.
+<h1 align="center">ZenithPulse</h1>
 
-Uses the backtest envelope as the policy contract and live execution drift as the risk signal.
+<p align="center">
+  Autonomous risk enforcement and observability runtime for Bitget Playbooks.
+</p>
 
-**Live:** [Dashboard](https://zenithpulse-dashboard.vercel.app) | [Server](https://zenithpulse-server.onrender.com/api/health) | [SKILL.md](https://zenithpulse-server.onrender.com/skill.md)
+<p align="center">
+  <a href="https://zenithpulse-dashboard.vercel.app">Dashboard</a> · <a href="https://zenithpulse-server.onrender.com/api/health">Server</a> · <a href="https://zenithpulse-server.onrender.com/skill.md">SKILL.md</a> · <a href="https://www.npmjs.com/package/zenithpulse-mcp"><img src="https://img.shields.io/npm/v/zenithpulse-mcp" alt="zenithpulse-mcp on npm" /></a>
+</p>
+
+ZenithPulse monitors live trading strategies against their own backtest rules — detects when they break promises, scores the risk, and enforces automatically.
 
 ---
 
 ## Problem
 
-Bitget's agent stack covers strategy authoring, backtesting, deployment, and execution — but once a Playbook goes live, nothing watches it. A strategy can drift from its backtest envelope, trade unauthorized assets, breach drawdown limits, or degrade in performance — all with zero detection, zero scoring, and zero enforcement.
+Your Bitget Playbook can go rogue. ZenithPulse watches it 24/7 and stops it.
 
-The gap between "Playbook deployed" and "capital lost" is completely empty.
+You backtest a strategy — it promises max 12% drawdown, only trades BTC/ETH, stays within margin. You deploy it as a Playbook. Now what?
+
+Nothing watches whether it actually follows those rules. It can drift, trade unauthorized assets, blow past drawdown limits — and you don't know until capital is lost.
+
+The gap between "Playbook deployed" and "something went wrong" is completely empty.
 
 ## Solution
 
-ZenithPulse fills this gap with six components:
+ZenithPulse reads your Playbook's backtest results and turns them into rules. Then it watches live execution every 15 seconds to catch violations — and optionally stops them.
 
 | Component | What it does |
 |---|---|
-| **Backtest-as-policy** | Reads backtest metrics from `getagent-skill` API, derives a behavioral contract automatically. Zero config. |
-| **Drift engine** | Polls live execution state via `bitget-core` every 15s. Detects deviation from the behavioral contract. |
-| **Risk scoring** | Composite per-Playbook risk score (0–100), updated in real time. |
-| **Reactive enforcement** | In `enforce` mode: cancels violating orders, closes breaching positions. |
-| **Decision trace** | Structured forensic record per observation — what was seen, which rule applied, what happened. |
-| **Alerts** | Telegram notification within seconds of any violation or enforcement action. |
+| **Backtest-as-policy** | Reads your backtest results and turns them into rules automatically |
+| **Drift engine** | Polls live state every 15s, catches when it breaks the rules |
+| **Risk scoring** | Scores how dangerous the current state is (0–100) |
+| **Reactive enforcement** | Cancels orders, closes positions when risk is critical |
+| **Decision trace** | Records exactly what happened and why — full audit trail |
+| **Alerts** | Real-time SSE events + dashboard notifications on violations |
 
-**Key insight:** The Playbook's own backtest output IS the behavioral contract. Deploy a Playbook, connect ZenithPulse — monitoring + enforcement live in under 5 minutes with zero configuration.
+Deploy a Playbook, connect ZenithPulse — monitoring starts in under 5 minutes with zero configuration.
+
+### The Loop
+
+Every 15 seconds, ZenithPulse runs this cycle autonomously:
+
+```
+  Watch → Detect → Score → Act → Record
+    ↑                              │
+    └──────────────────────────────┘
+```
+
+1. **Watch** — poll live positions, orders, balance from Bitget
+2. **Detect** — compare against the rules derived from backtest
+3. **Score** — compute risk 0–100 (how far from safe?)
+4. **Act** — if in enforce mode and risk is critical: cancel orders / close positions
+5. **Record** — log exactly what happened and why (decision trace)
 
 ---
 
@@ -35,98 +63,14 @@ ZenithPulse fills this gap with six components:
 
 | Product | Usage |
 |---|---|
-| **`bitget-core`** (Agent Hub) | Live state reads (positions, orders, balance) + enforcement writes (`futures_cancel_orders`, `futures_place_order` tradeSide:close) on USDT-margined perpetual futures |
-| **`getagent-skill`** (Playbook API) | Backtest metrics for behavioral contract derivation (trading_symbols, max_drawdown_pct, sharpe_ratio, margin_budget) |
-| **GetClaw** | Narrative complement — Bitget signals; ZenithPulse adds risk layer with own alerting bot |
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- [Bun](https://bun.sh) >= 1.1
-- Bitget API key with Read + Trade permissions ([create here](https://www.bitget.com/account/newapi))
-
-### Install & Run
-
-```bash
-git clone https://github.com/samueldanso/zenithpulse.git
-cd zenithpulse
-cp .env.example .env
-# Fill in: BITGET_API_KEY, BITGET_SECRET_KEY, BITGET_PASSPHRASE
-bun install
-bun run dev
-```
-
-Server starts at `http://localhost:3001`, dashboard at `http://localhost:3000`.
-
-The observer loop auto-discovers your Playbooks, derives behavioral contracts from their backtest output, and begins monitoring immediately.
-
-### Docker (self-hosted)
-
-```bash
-docker compose up
-```
-
----
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                          ZenithPulse Server                           │
-│                                                                      │
-│  ┌─────────────┐    ┌──────────────┐    ┌──────────────────────┐    │
-│  │  Playbook   │    │  Observer    │    │   Drift Detection    │    │
-│  │  API Client │───>│  Loop       │───>│   + Risk Scoring     │    │
-│  │  (getagent) │    │  (15s poll) │    │                      │    │
-│  └─────────────┘    └──────────────┘    └──────────┬───────────┘    │
-│         │                  ^                        │                │
-│         v                  │                        v                │
-│  ┌─────────────┐    ┌─────┴────────┐    ┌──────────────────────┐    │
-│  │ Behavioral  │    │  Bitget API  │    │   Enforcement        │    │
-│  │ Contract    │    │  (bitget-    │    │   Engine             │    │
-│  │ Derivation  │    │   core)      │    │   (enforce mode)     │    │
-│  └─────────────┘    └──────────────┘    └──────────┬───────────┘    │
-│                                                     │                │
-│                     ┌──────────────┐                │                │
-│                     │  Decision    │<───────────────┘                │
-│                     │  Trace +     │                                 │
-│                     │  Audit Log   │──────> SQLite                   │
-│                     └──────┬───────┘                                 │
-│                            │                                         │
-│                            v                                         │
-│                     ┌──────────────┐    ┌──────────────────────┐    │
-│                     │  Telegram    │    │   Hono REST API      │    │
-│                     │  Alerts      │    │   + SSE Events       │    │
-│                     └──────────────┘    └──────────┬───────────┘    │
-│                                                     │                │
-└─────────────────────────────────────────────────────┼────────────────┘
-                                                      │
-                                              ┌───────v───────┐
-                                              │  Next.js      │
-                                              │  Dashboard    │
-                                              └───────────────┘
-```
-
-### Observer Loop (each cycle)
-
-1. Poll Bitget API → build LiveState snapshot
-2. Load current BehavioralContract (derived from backtest)
-3. Drift detection: compare LiveState vs Contract → DriftResult[]
-4. Compute composite risk score from drift results
-5. IF mode=enforce AND violations → execute enforcement (cancel/close)
-6. Build DecisionTrace (state + rules + results + actions + reasoning)
-7. Persist trace to SQLite
-8. Emit SSE event to connected dashboard clients
-9. IF violations → fire Telegram alert
+| **`bitget-core`** (Agent Hub) | Live state reads (positions, orders, balance) + enforcement writes on USDT-margined perpetual futures |
+| **`getagent-skill`** (Playbook API) | Backtest metrics for behavioral contract derivation |
 
 ---
 
 ## Agent Integration
 
-ZenithPulse is agent infrastructure. The primary consumer is your AI agent — a trading agent, portfolio manager, or any autonomous system running Bitget Playbooks. You point your agent at ZenithPulse; it handles risk monitoring from there.
+ZenithPulse is agent infrastructure. The primary consumer is your AI agent — a trading agent, portfolio manager, or any autonomous system running Bitget Playbooks.
 
 ### Connect Your Agent
 
@@ -163,7 +107,7 @@ Zero install. Your agent now has 5 tools for real-time risk monitoring and enfor
   "mcpServers": {
     "zenithpulse": {
       "command": "npx",
-      "args": ["zenithpulse-mcp"],
+      "args": ["-y", "zenithpulse-mcp"],
       "env": {
         "ZENITHPULSE_API_URL": "https://zenithpulse-server.onrender.com"
       }
@@ -197,14 +141,104 @@ For agent frameworks that don't support MCP, or for direct programmatic access:
 | `GET` | `/skill.md` | Machine-readable skill definition |
 | `ALL` | `/mcp` | MCP Streamable HTTP endpoint |
 
-**Try it now:**
-
 ```bash
 curl https://zenithpulse-server.onrender.com/api/health
 curl https://zenithpulse-server.onrender.com/api/playbooks
 curl -X PATCH https://zenithpulse-server.onrender.com/api/playbooks/{id}/mode \
   -H "Content-Type: application/json" -d '{"mode": "enforce"}'
 ```
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- [Bun](https://bun.sh) >= 1.1
+- Bitget API key with Read + Trade permissions ([create here](https://www.bitget.com/account/newapi))
+
+### Install & Run
+
+```bash
+git clone https://github.com/samueldanso/zenithpulse.git
+cd zenithpulse
+cp .env.example .env
+# Fill in: BITGET_API_KEY, BITGET_SECRET_KEY, BITGET_PASSPHRASE
+bun install
+bun run dev
+```
+
+Server starts at `http://localhost:3001`, dashboard at `http://localhost:3000`.
+
+The observer loop auto-discovers your Playbooks, derives behavioral contracts from their backtest output, and begins monitoring immediately.
+
+### Docker
+
+```bash
+docker compose up
+```
+
+### Commands
+
+```bash
+bun run dev          # Start server + dashboard
+bun run build        # Build all packages
+bun run check        # Biome lint + format check
+bun run test         # Run test suite
+bun run typecheck    # TypeScript type checking
+```
+
+---
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                          ZenithPulse Server                           │
+│                                                                      │
+│  ┌─────────────┐    ┌──────────────┐    ┌──────────────────────┐    │
+│  │  Playbook   │    │  Observer    │    │   Drift Detection    │    │
+│  │  API Client │───>│  Loop       │───>│   + Risk Scoring     │    │
+│  │  (getagent) │    │  (15s poll) │    │                      │    │
+│  └─────────────┘    └──────────────┘    └──────────┬───────────┘    │
+│         │                  ^                        │                │
+│         v                  │                        v                │
+│  ┌─────────────┐    ┌─────┴────────┐    ┌──────────────────────┐    │
+│  │ Behavioral  │    │  Bitget API  │    │   Enforcement        │    │
+│  │ Contract    │    │  (bitget-    │    │   Engine             │    │
+│  │ Derivation  │    │   core)      │    │   (enforce mode)     │    │
+│  └─────────────┘    └──────────────┘    └──────────┬───────────┘    │
+│                                                     │                │
+│                     ┌──────────────┐                │                │
+│                     │  Decision    │<───────────────┘                │
+│                     │  Trace +     │                                 │
+│                     │  Audit Log   │──────> SQLite                   │
+│                     └──────┬───────┘                                 │
+│                            │                                         │
+│                            v                                         │
+│                     ┌──────────────┐    ┌──────────────────────┐    │
+│                     │  SSE Alerts  │    │   Hono REST API      │    │
+│                     │  + Dashboard │    │   + MCP Endpoint     │    │
+│                     └──────────────┘    └──────────┬───────────┘    │
+│                                                     │                │
+└─────────────────────────────────────────────────────┼────────────────┘
+                                                      │
+                                              ┌───────v───────┐
+                                              │  Next.js      │
+                                              │  Dashboard    │
+                                              └───────────────┘
+```
+
+### Observer Loop
+
+1. Poll Bitget API → build LiveState snapshot
+2. Load BehavioralContract (derived from backtest)
+3. Drift detection: compare LiveState vs Contract → DriftResult[]
+4. Compute composite risk score from drift results
+5. If mode=enforce and violations → execute enforcement (cancel/close)
+6. Build DecisionTrace (state + rules + results + actions + reasoning)
+7. Persist trace to SQLite
+8. Emit SSE event to connected dashboard clients
 
 ---
 
@@ -226,10 +260,10 @@ Composite score (0–100) using max-of-weighted-factors:
 
 ```
 risk_score = max(
-  drawdown_proximity   * 40,   // how close to backtest max drawdown
-  asset_drift_count    * 25,   // positions in unauthorized symbols
-  oversize_ratio       * 20,   // exposure vs margin budget
-  sharpe_degradation   * 15    // performance decay vs backtest
+  drawdown_proximity   * 40,
+  asset_drift_count    * 25,
+  oversize_ratio       * 20,
+  sharpe_degradation   * 15
 )
 ```
 
@@ -238,51 +272,6 @@ risk_score = max(
 | 0–39 | `healthy` | Within backtest envelope |
 | 40–69 | `elevated` | Approaching contract bounds |
 | 70–100 | `critical` | Breach — enforcement fires in enforce mode |
-
----
-
-## Tech Stack
-
-| Layer | Choice |
-|---|---|
-| Runtime | Bun |
-| Backend | Hono ^4 |
-| Dashboard | Next.js ^16 (App Router) |
-| Database | SQLite via Drizzle ORM (bun:sqlite) |
-| API client | bitget-core (npm) |
-| MCP | @modelcontextprotocol/sdk ^1 |
-| Validation | Zod ^3 |
-| Styling | Tailwind CSS v4 + shadcn/ui |
-| Monorepo | Bun workspaces |
-
----
-
-## Project Structure
-
-```
-zenithpulse/
-├── packages/
-│   ├── server/          # Hono API + observer loop + enforcement + MCP endpoint
-│   │   └── src/
-│   │       ├── api/         # REST routes + SSE + /mcp (Streamable HTTP)
-│   │       ├── bitget/      # Bitget API client (bitget-core)
-│   │       ├── contract/    # Behavioral contract derivation
-│   │       ├── observer/    # Polling loop + state management
-│   │       ├── drift/       # Drift detection + risk scoring
-│   │       ├── enforce/     # Enforcement engine + actions
-│   │       ├── trace/       # Decision trace recording
-│   │       ├── mcp/         # MCP tool definitions + stdio server
-│   │       └── db/          # Drizzle schema + migrations
-│   ├── mcp/             # Publishable MCP package (npx zenithpulse-mcp)
-│   ├── dashboard/       # Next.js real-time monitoring UI
-│   └── shared/          # Shared types + constants
-├── SKILL.md             # Machine-readable skill definition (YAML frontmatter)
-├── .mcp.json            # MCP auto-discovery config
-├── server.json          # MCP Registry entry (npm + remote)
-├── Dockerfile           # Production container
-├── docker-compose.yml   # Self-hosted deployment
-└── render.yaml          # Render cloud deployment
-```
 
 ---
 
@@ -320,10 +309,6 @@ BITGET_PASSPHRASE=
 PLAYBOOK_ACCESS_KEY=
 PLAYBOOK_MARGIN_BUDGET=100
 
-# Telegram Alerts (optional)
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-
 # Server Config
 DB_PATH=./data/zenithpulse.db
 PORT=3001
@@ -341,22 +326,51 @@ ALLOWED_ORIGINS=http://localhost:3000
 |---|---|---|
 | `getagent-skill` | Author, backtest, deploy Playbooks | Turns backtest metrics into live enforcement rules automatically |
 | `bitget-core` | Execute trades, read account state | Continuous 15s polling loop comparing live state against derived contract |
-| GetClaw | Deliver trade signals via Telegram | Risk-specific alerts with structured decision trace (what drifted, which rule, what action) |
-| Bitget Dashboard | Manual portfolio view | Per-Playbook risk score, automated enforcement feed, contract-vs-reality comparison |
+| Bitget Dashboard | Manual portfolio view | Per-Playbook risk score, automated enforcement feed |
 
 Nothing in the current Bitget stack derives rules from backtest, continuously monitors against them, scores risk, acts on violations, and produces a decision trace. ZenithPulse is additive — it consumes existing APIs and adds the behavioral contract + drift + enforcement + trace layer.
 
 ---
 
-## Commands
+## Tech Stack
 
-```bash
-bun install          # Install all workspace deps
-bun run dev          # Start server + dashboard
-bun run build        # Build all packages
-bun run check        # Biome lint + format check
-bun run test         # Run vitest test suite
-bun run typecheck    # TypeScript type checking
+| Layer | Choice |
+|---|---|
+| Runtime | Bun |
+| Backend | Hono ^4 |
+| Dashboard | Next.js ^16 (App Router) |
+| Database | SQLite via Drizzle ORM (bun:sqlite) |
+| API client | bitget-core (npm) |
+| MCP | @modelcontextprotocol/sdk ^1 |
+| Validation | Zod ^3 |
+| Styling | Tailwind CSS v4 + shadcn/ui |
+| Monorepo | Bun workspaces |
+
+## Project Structure
+
+```
+zenithpulse/
+├── packages/
+│   ├── server/          # Hono API + observer loop + enforcement + MCP endpoint
+│   │   └── src/
+│   │       ├── api/         # REST routes + SSE + /mcp (Streamable HTTP)
+│   │       ├── bitget/      # Bitget API client (bitget-core)
+│   │       ├── contract/    # Behavioral contract derivation
+│   │       ├── observer/    # Polling loop + state management
+│   │       ├── drift/       # Drift detection + risk scoring
+│   │       ├── enforce/     # Enforcement engine + actions
+│   │       ├── trace/       # Decision trace recording
+│   │       ├── mcp/         # MCP tool definitions + stdio server
+│   │       └── db/          # Drizzle schema + migrations
+│   ├── mcp/             # Publishable MCP package (npx zenithpulse-mcp)
+│   ├── dashboard/       # Next.js real-time monitoring UI
+│   └── shared/          # Shared types + constants
+├── examples/            # Runnable demo scripts + captured session output
+├── SKILL.md             # Machine-readable skill definition
+├── server.json          # MCP Registry entry
+├── Dockerfile           # Production container
+├── docker-compose.yml   # Self-hosted deployment
+└── render.yaml          # Render cloud deployment
 ```
 
 ---
@@ -367,4 +381,4 @@ MIT
 
 ---
 
-**Track:** Bitget AI Base Camp S1 — Track 2 (Trading Infra)
+<sub>Bitget AI Base Camp S1 — Track 2 (Trading Infra)</sub>

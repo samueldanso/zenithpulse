@@ -2,7 +2,7 @@
 name: zenithpulse
 version: 1.0.0
 description: >
-  Autonomous risk enforcement and observability runtime for Bitget Playbooks. Use when you need to monitor playbook risk state, inspect decision traces, check drift detection results, switch enforcement modes, or get real-time health of the observer loop. Invoke for any Bitget Playbook monitoring, risk scoring, enforcement control, or audit trail queries.
+  Watches your Bitget Playbooks 24/7 and catches them when they break their own backtest rules. Use to check risk state, inspect decision traces, switch enforcement modes, or query the audit trail. Invoke for any Playbook monitoring, risk scoring, enforcement control, or violation history.
 homepage: https://zenithpulse-server.onrender.com
 docs: https://github.com/samueldanso/zenithpulse
 metadata: {"api_base": "https://zenithpulse-server.onrender.com", "mcp_server": "packages/mcp/src/index.ts", "mcp_endpoint": "/mcp"}
@@ -10,27 +10,31 @@ metadata: {"api_base": "https://zenithpulse-server.onrender.com", "mcp_server": 
 
 # ZenithPulse
 
-Autonomous risk enforcement and observability runtime for Bitget Playbooks. Derives behavioral contracts from backtest output, monitors live execution for drift, scores risk in real-time, enforces reactively (cancel orders, close positions), and traces every decision.
+Watches your Bitget Playbooks and stops them when they go rogue. Reads backtest results as the rules, monitors live execution every 15s, scores risk 0–100, enforces automatically (cancel orders, close positions), and records every decision.
 
 **Base URL:** `http://localhost:3001` (self-hosted) · `https://zenithpulse-server.onrender.com` (production)
 
-**Dashboard:** [zenithpulse.vercel.app](https://zenithpulse.vercel.app)
+**Dashboard:** [zenithpulse-dashboard.vercel.app](https://zenithpulse-dashboard.vercel.app)
 
 ---
 
 ## How It Works
 
 ```
-Playbook backtest output → Behavioral contract derivation
-  → Observer loop (polling every 30s)
-    → Live state snapshot (positions, orders, balance)
-    → Drift detection (compare live vs contract envelope)
-    → Risk scoring (0–100)
-    → Enforcement decision (if mode=enforce and risk > threshold)
-      → Cancel orders / Close positions
-    → Decision trace stored
-    → Alert evaluation
+Autonomous loop — every 15 seconds:
+
+  Observe → Detect drift → Score risk → Act → Trace
+     ↑                                        │
+     └────────────────────────────────────────┘
+
+  Observe:  poll positions, orders, balance (bitget-core)
+  Detect:   compare live state vs behavioral contract
+  Score:    compute composite risk 0–100
+  Act:      cancel orders / close positions (if mode=enforce)
+  Trace:    persist structured decision record + emit SSE event
 ```
+
+Behavioral contract derived once from Playbook backtest output (getagent-skill API). No manual config.
 
 **Three modes:**
 - `enforce` — active risk management, cancels orders / closes positions on drift
@@ -49,7 +53,6 @@ Connect any MCP client directly to the production endpoint:
 {
   "mcpServers": {
     "zenithpulse": {
-      "type": "streamable-http",
       "url": "https://zenithpulse-server.onrender.com/mcp"
     }
   }
@@ -65,7 +68,7 @@ Run the MCP server locally via stdio:
   "mcpServers": {
     "zenithpulse": {
       "command": "npx",
-      "args": ["zenithpulse-mcp"],
+      "args": ["-y", "zenithpulse-mcp"],
       "env": {
         "ZENITHPULSE_API_URL": "https://zenithpulse-server.onrender.com"
       }
