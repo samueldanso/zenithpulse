@@ -4,9 +4,11 @@ COPY package.json bun.lock ./
 COPY packages/server/package.json packages/server/
 COPY packages/shared/package.json packages/shared/
 COPY packages/dashboard/package.json packages/dashboard/
+COPY packages/mcp/package.json packages/mcp/
 RUN bun install
 COPY packages/shared/ packages/shared/
 COPY packages/server/ packages/server/
+COPY SKILL.md ./
 
 FROM oven/bun:1.3-slim AS runtime
 WORKDIR /app

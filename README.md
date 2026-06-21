@@ -124,73 +124,87 @@ docker compose up
 
 ---
 
-## Integration
+## Agent Integration
 
-ZenithPulse exposes four integration surfaces. The dashboard is a dev console — the product is the runtime and these interfaces.
+ZenithPulse is agent infrastructure. The primary consumer is your AI agent — a trading agent, portfolio manager, or any autonomous system running Bitget Playbooks. You point your agent at ZenithPulse; it handles risk monitoring from there.
 
-### REST API
+### Connect Your Agent
 
-```bash
-# List all monitored playbooks with risk state
-curl https://zenithpulse-server.onrender.com/api/playbooks
+**Step 1: Agent discovers capabilities**
 
-# Get playbook detail (contract, risk score, last trace)
-curl https://zenithpulse-server.onrender.com/api/playbooks/{id}
+Your agent reads the skill definition to learn what ZenithPulse offers:
 
-# Switch enforcement mode
-curl -X PATCH https://zenithpulse-server.onrender.com/api/playbooks/{id}/mode \
-  -H "Content-Type: application/json" \
-  -d '{"mode": "enforce"}'
-
-# List decision traces (paginated, filterable)
-curl "https://zenithpulse-server.onrender.com/api/traces?limit=20"
-
-# Subscribe to real-time events (SSE)
-curl -N https://zenithpulse-server.onrender.com/api/events
-
-# Health check
-curl https://zenithpulse-server.onrender.com/api/health
+```
+https://zenithpulse-server.onrender.com/skill.md
 ```
 
-### MCP Server (stdio)
+Or tell your agent: _"Read https://zenithpulse-server.onrender.com/skill.md and connect to ZenithPulse."_
 
-Connect any MCP-compatible agent (Claude, Cursor, etc.) directly to ZenithPulse:
+**Step 2: Agent connects via MCP**
+
+Add to your agent's MCP config (Claude Desktop, Cursor, custom agent framework):
 
 ```json
 {
   "mcpServers": {
     "zenithpulse": {
-      "command": "bun",
-      "args": ["run", "--cwd", "/path/to/zenithpulse/packages/server", "src/mcp-entry.ts"],
+      "url": "https://zenithpulse-server.onrender.com/mcp"
+    }
+  }
+}
+```
+
+Zero install. Your agent now has 5 tools for real-time risk monitoring and enforcement control.
+
+**Or via npx (local stdio transport):**
+
+```json
+{
+  "mcpServers": {
+    "zenithpulse": {
+      "command": "npx",
+      "args": ["zenithpulse-mcp"],
       "env": {
-        "BITGET_API_KEY": "...",
-        "BITGET_SECRET_KEY": "...",
-        "BITGET_PASSPHRASE": "..."
+        "ZENITHPULSE_API_URL": "https://zenithpulse-server.onrender.com"
       }
     }
   }
 }
 ```
 
-**MCP Tools:**
+### MCP Tools
 
-| Tool | Description |
+| Tool | What your agent can do |
 |---|---|
-| `list_playbooks` | List all monitored playbooks with risk state |
-| `get_risk_state` | Current risk score + drift results for a playbook |
-| `get_traces` | Query decision trace history |
-| `switch_mode` | Change operating mode (enforce/observe/silent) |
-| `get_health` | Runtime health + uptime + observer state |
+| `list_playbooks` | See all monitored playbooks with risk state |
+| `get_risk_state` | Check risk score + drift results for a playbook |
+| `get_traces` | Read decision trace history (audit trail) |
+| `switch_mode` | Change enforcement mode (enforce/observe/silent) |
+| `get_health` | Check runtime health + observer state |
 
-### SKILL.md (Agent Discovery)
+### REST API
 
-Machine-readable integration guide served at `GET /skill.md` — no auth required. Pass the URL to any coding agent:
+For agent frameworks that don't support MCP, or for direct programmatic access:
 
-> "Configure ZenithPulse using the guide at https://zenithpulse-server.onrender.com/skill.md"
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/health` | Server health + observer state |
+| `GET` | `/api/playbooks` | List all monitored playbooks |
+| `GET` | `/api/playbooks/:id` | Playbook detail with behavioral contract |
+| `PATCH` | `/api/playbooks/:id/mode` | Switch enforcement mode |
+| `GET` | `/api/traces` | Decision traces (query: `playbook_id`, `limit`, `action`) |
+| `GET` | `/api/events` | SSE stream of real-time risk events |
+| `GET` | `/skill.md` | Machine-readable skill definition |
+| `ALL` | `/mcp` | MCP Streamable HTTP endpoint |
 
-### SSE Events
+**Try it now:**
 
-Real-time event stream for dashboard and external consumers. Connect to `/api/events` for live updates on every observation cycle.
+```bash
+curl https://zenithpulse-server.onrender.com/api/health
+curl https://zenithpulse-server.onrender.com/api/playbooks
+curl -X PATCH https://zenithpulse-server.onrender.com/api/playbooks/{id}/mode \
+  -H "Content-Type: application/json" -d '{"mode": "enforce"}'
+```
 
 ---
 
@@ -248,19 +262,23 @@ risk_score = max(
 ```
 zenithpulse/
 ├── packages/
-│   ├── server/          # Hono API + observer loop + enforcement + MCP
+│   ├── server/          # Hono API + observer loop + enforcement + MCP endpoint
 │   │   └── src/
-│   │       ├── api/         # REST routes + SSE + SKILL.md
+│   │       ├── api/         # REST routes + SSE + /mcp (Streamable HTTP)
 │   │       ├── bitget/      # Bitget API client (bitget-core)
 │   │       ├── contract/    # Behavioral contract derivation
 │   │       ├── observer/    # Polling loop + state management
 │   │       ├── drift/       # Drift detection + risk scoring
 │   │       ├── enforce/     # Enforcement engine + actions
 │   │       ├── trace/       # Decision trace recording
-│   │       ├── mcp/         # MCP server + tool definitions
+│   │       ├── mcp/         # MCP tool definitions + stdio server
 │   │       └── db/          # Drizzle schema + migrations
+│   ├── mcp/             # Publishable MCP package (npx zenithpulse-mcp)
 │   ├── dashboard/       # Next.js real-time monitoring UI
 │   └── shared/          # Shared types + constants
+├── SKILL.md             # Machine-readable skill definition (YAML frontmatter)
+├── .mcp.json            # MCP auto-discovery config
+├── server.json          # MCP Registry entry (npm + remote)
 ├── Dockerfile           # Production container
 ├── docker-compose.yml   # Self-hosted deployment
 └── render.yaml          # Render cloud deployment

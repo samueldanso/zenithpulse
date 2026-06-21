@@ -21,15 +21,17 @@ const db = getDb(config.DB_PATH);
 const bitgetClient = createBitgetClient(config);
 const playbookClient = createPlaybookClient(config);
 
+const runtimeState = {
+	getObserverRunning: () => observerRunning,
+	getLastCycleAt: () => lastCycleAt,
+};
+
 const app = new Hono();
-const routes = createRoutes(db, config);
+const routes = createRoutes(db, config, runtimeState);
 app.route("/", routes);
 
 startObserver(config, db, bitgetClient, playbookClient);
-startMcpServer(db, {
-	getObserverRunning: () => observerRunning,
-	getLastCycleAt: () => lastCycleAt,
-}).catch((err) => {
+startMcpServer(db, runtimeState).catch((err) => {
 	console.error("[mcp] Failed to start:", err);
 });
 

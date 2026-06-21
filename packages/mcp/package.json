@@ -1,0 +1,41 @@
+{
+	"name": "zenithpulse-mcp",
+	"version": "1.0.1",
+	"description": "MCP server for ZenithPulse — autonomous risk enforcement runtime for Bitget Playbooks",
+	"type": "module",
+	"bin": {
+		"zenithpulse-mcp": "dist/index.js"
+	},
+	"main": "./dist/index.js",
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"dev": "bun run src/index.ts",
+		"build": "bun build src/index.ts --outdir dist --target node",
+		"prepublishOnly": "bun run build",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"zod": "^3.25.0"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.3.14",
+		"typescript": "^5.7.0"
+	},
+	"keywords": [
+		"mcp",
+		"bitget",
+		"risk",
+		"trading",
+		"playbook",
+		"zenithpulse"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/samueldanso/zenithpulse.git"
+	}
+}

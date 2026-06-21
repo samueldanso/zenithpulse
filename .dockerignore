@@ -18,5 +18,6 @@ packages/dashboard
 context
 tasks
 *.md
+!SKILL.md
 !packages/server/README.md
 !packages/shared/README.md

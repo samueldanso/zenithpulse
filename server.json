@@ -1,0 +1,28 @@
+{
+	"$schema": "https://registry.mcphub.io/schema/server.json",
+	"name": "zenithpulse",
+	"description": "Autonomous risk enforcement and observability runtime for Bitget Playbooks",
+	"version": "1.0.0",
+	"packages": [
+		{
+			"registry_name": "npm",
+			"name": "zenithpulse-mcp",
+			"version": "1.0.0",
+			"runtime": "node",
+			"environment_variables": [
+				{
+					"name": "ZENITHPULSE_API_URL",
+					"description": "Base URL of the ZenithPulse server",
+					"default": "https://zenithpulse-server.onrender.com",
+					"required": false
+				}
+			]
+		}
+	],
+	"remotes": [
+		{
+			"transport_type": "streamable-http",
+			"url": "https://zenithpulse-server.onrender.com/mcp"
+		}
+	]
+}
