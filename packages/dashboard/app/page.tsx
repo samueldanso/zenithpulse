@@ -347,6 +347,7 @@ function PlaybookCard({
 	const lastSeen = playbook.lastObservedAt
 		? new Date(playbook.lastObservedAt).toLocaleTimeString()
 		: "—";
+	const cs = playbook.contractSummary;
 
 	const borderAccent =
 		state === "critical"
@@ -381,6 +382,17 @@ function PlaybookCard({
 				<RiskBadge state={state} />
 			</div>
 
+			{cs && (
+				<div className="mb-3 grid grid-cols-3 gap-x-3 gap-y-1 border-t border-border/50 pt-2">
+					<MetricCell label="Sharpe" value={cs.backTestSharpe.toFixed(2)} />
+					<MetricCell label="Return" value={`${cs.expectedReturnPct.toFixed(0)}%`} />
+					<MetricCell label="Drawdown" value={`${cs.maxDrawdownPct.toFixed(1)}%`} />
+					<MetricCell label="Budget" value={`$${cs.marginBudget}`} />
+					<MetricCell label="Trades" value={String(cs.totalTrades)} />
+					<MetricCell label="Assets" value={String(cs.assetCount)} />
+				</div>
+			)}
+
 			<div className="flex items-center justify-between">
 				<span className="font-mono text-[10px] text-muted-foreground">{lastSeen}</span>
 				<span className="flex items-center gap-1 text-[10px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
@@ -388,6 +400,15 @@ function PlaybookCard({
 				</span>
 			</div>
 		</Link>
+	);
+}
+
+function MetricCell({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="flex flex-col">
+			<span className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</span>
+			<span className="font-mono text-[11px] font-medium tabular-nums">{value}</span>
+		</div>
 	);
 }
 

@@ -15,16 +15,29 @@ export function createPlaybookRoutes(db: Db) {
 
 	app.get("/", (c) => {
 		const rows = db.select().from(schema.playbooks).all();
-		const result = rows.map((row) => ({
-			id: row.id,
-			name: row.name,
-			displayName: row.name,
-			status: "active",
-			executionMode: row.mode,
-			riskScore: row.riskScore,
-			riskState: row.riskState,
-			lastObservedAt: row.lastObservedAt,
-		}));
+		const result = rows.map((row) => {
+			const contract = row.contractJson ? JSON.parse(row.contractJson) : null;
+			return {
+				id: row.id,
+				name: row.name,
+				displayName: row.name,
+				status: "active",
+				executionMode: row.mode,
+				riskScore: row.riskScore,
+				riskState: row.riskState,
+				lastObservedAt: row.lastObservedAt,
+				contractSummary: contract
+					? {
+							maxDrawdownPct: contract.maxDrawdownPct,
+							backTestSharpe: contract.backTestSharpe,
+							marginBudget: contract.marginBudget,
+							expectedReturnPct: contract.expectedReturnPct,
+							totalTrades: contract.totalTrades,
+							assetCount: contract.allowedSymbols?.length ?? 0,
+						}
+					: null,
+			};
+		});
 		return c.json(result);
 	});
 

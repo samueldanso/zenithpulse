@@ -9,6 +9,15 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
 export type RiskState = "healthy" | "elevated" | "critical";
 export type ExecutionMode = "observe" | "enforce" | "silent";
 
+export interface ContractSummary {
+	maxDrawdownPct: number;
+	backTestSharpe: number;
+	marginBudget: number;
+	expectedReturnPct: number;
+	totalTrades: number;
+	assetCount: number;
+}
+
 export interface Playbook {
 	id: string;
 	name: string;
@@ -18,6 +27,7 @@ export interface Playbook {
 	riskScore: number;
 	riskState: RiskState;
 	lastObservedAt: string | null;
+	contractSummary?: ContractSummary | null;
 	contract?: {
 		playbookId: string;
 		derivedAt: string;
