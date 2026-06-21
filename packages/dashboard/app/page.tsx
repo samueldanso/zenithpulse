@@ -92,6 +92,15 @@ export default function OverviewPage() {
 				</div>
 				<div className="hidden items-center gap-3 text-[10px] font-mono text-muted-foreground sm:flex">
 					<a
+						href="https://x.com/ZenithPulseAI"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="flex items-center gap-1 hover:text-foreground transition-colors"
+					>
+						@ZenithPulseAI <ExternalLink className="h-2.5 w-2.5" />
+					</a>
+					<span className="text-border">|</span>
+					<a
 						href="https://github.com/samueldanso/zenithpulse"
 						target="_blank"
 						rel="noopener noreferrer"

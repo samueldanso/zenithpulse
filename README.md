@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://zenithpulse-dashboard.vercel.app">Dashboard</a> · <a href="https://zenithpulse-server.onrender.com/api/health">Server</a> · <a href="https://zenithpulse-server.onrender.com/skill.md">SKILL.md</a> · <a href="https://www.npmjs.com/package/zenithpulse-mcp">npm</a> · <a href="https://github.com/samueldanso/zenithpulse/blob/main/examples/sample-output/session-capture.json">Verifiable Proof</a>
+  <a href="https://zenithpulse-dashboard.vercel.app">Dashboard</a> · <a href="https://zenithpulse-server.onrender.com/api/health">Server</a> · <a href="https://zenithpulse-server.onrender.com/skill.md">SKILL.md</a> · <a href="https://www.npmjs.com/package/zenithpulse-mcp">npm</a> · <a href="https://github.com/samueldanso/zenithpulse/blob/main/examples/sample-output/session-capture.json">Verifiable Proof</a> · <a href="https://x.com/ZenithPulseAI/status/2068730998724907081">Demo Video</a>
 </p>
 
 ZenithPulse monitors live trading strategies against their own backtest rules — detects when they drift, scores the risk, enforces automatically, and records every decision.
