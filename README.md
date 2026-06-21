@@ -356,27 +356,40 @@ Nothing in the current Bitget stack derives rules from backtest, continuously mo
 ```
 zenithpulse/
 ├── packages/
-│   ├── server/          # Hono API + observer loop + enforcement + MCP endpoint
+│   ├── server/                # Hono API + observer runtime + MCP endpoint
 │   │   └── src/
-│   │       ├── api/         # REST routes + SSE + /mcp (Streamable HTTP)
-│   │       ├── bitget/      # Bitget API client (bitget-core)
-│   │       ├── contract/    # Behavioral contract derivation
-│   │       ├── observer/    # Polling loop + state management
-│   │       ├── drift/       # Drift detection + risk scoring
-│   │       ├── enforce/     # Enforcement engine + actions
-│   │       ├── trace/       # Decision trace recording
-│   │       ├── mcp/         # MCP tool definitions + stdio server
-│   │       └── db/          # Drizzle schema + migrations
-│   ├── mcp/             # Publishable MCP package (npx zenithpulse-mcp)
-│   ├── dashboard/       # Next.js real-time monitoring UI
-│   └── shared/          # Shared types + constants
-├── examples/            # Runnable demo scripts + captured session output
-├── SKILL.md             # Machine-readable skill definition
-├── server.json          # MCP Registry entry
-├── Dockerfile           # Production container
-├── docker-compose.yml   # Self-hosted deployment
-└── render.yaml          # Render cloud deployment
+│   │       ├── bitget/
+│   │       │   ├── client.ts        # 🔗 bitget-core — futures positions, orders, balance (USDT-FUTURES)
+│   │       │   ├── playbook-api.ts  # 🔗 getagent-skill — fetch Playbook backtest metrics (ACCESS-KEY)
+│   │       │   └── types.ts         # Bitget API response types
+│   │       ├── contract/
+│   │       │   └── derive.ts        # 🔗 getagent-skill data → behavioral contract rules
+│   │       ├── observer/
+│   │       │   ├── loop.ts          # 15s autonomous polling loop
+│   │       │   └── poller.ts        # 🔗 bitget-core — futures_get_positions, futures_get_orders, get_account_assets
+│   │       ├── enforce/
+│   │       │   ├── engine.ts        # Enforcement decision logic (mode-aware)
+│   │       │   └── actions.ts       # 🔗 bitget-core — futures_cancel_orders, futures_place_order (close only)
+│   │       ├── drift/               # Drift detection + risk scoring (0–100)
+│   │       ├── trace/               # Decision trace recording (every cycle → SQLite)
+│   │       ├── api/                 # REST routes + SSE + /mcp + /skill.md
+│   │       ├── mcp/                 # 5 MCP tool definitions
+│   │       └── db/                  # Drizzle schema + SQLite
+│   ├── mcp/                   # Publishable MCP package (npx zenithpulse-mcp)
+│   ├── dashboard/             # Next.js 16 — real-time monitoring UI
+│   └── shared/                # Shared types + constants
+├── examples/                  # Runnable demo scripts + session capture
+│   └── sample-output/
+│       └── session-capture.json   # Verifiable proof — 48 API calls, 12 cycles, real Bitget data
+├── SKILL.md                   # Machine-readable agent skill definition (served at /skill.md)
+├── AGENTS.md                  # Agent context file
+├── server.json                # MCP Registry entry
+├── Dockerfile                 # Multi-stage production container
+├── docker-compose.yml         # Self-hosted deployment
+└── render.yaml                # Render cloud deployment config
 ```
+
+**Bitget integration (🔗):** 5 files use `bitget-core` for USDT-margined perpetual futures reads + writes. 2 files use `getagent-skill` to fetch backtest metrics and derive contracts. Every 15s the observer polls live state, compares against derived contracts, and enforces when risk is critical.
 
 ---
 
